@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Check, Pencil, Plus, UserMinus, UserPlus } from 'lucide-react'
+import { ArrowLeft, Check, Pencil, Plus, ScanLine, UserMinus, UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
 import { runAction, search } from '@/lib/api'
 import { Button } from '@/components/ui/button'
@@ -18,6 +18,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState, ErrorState, Field, PageHeader, SearchInput, Spinner } from '@/components/common'
 import { ScrollList } from '@/components/scroll-list'
+import { QrScannerDialog } from '@/components/qr-scanner'
 import { formatDate, fullName, humanizeValidationMessage } from '@/lib/utils'
 
 const PAGE_SIZE = 100
@@ -74,6 +75,8 @@ export default function Attendance() {
   const [params, setParams] = useSearchParams()
   const term = params.get('q') || ''
 
+  const [scannerOpen, setScannerOpen] = useState(false)
+  const [scanLog, setScanLog] = useState([])
   const [newMemberOpen, setNewMemberOpen] = useState(false)
   const [newMember, setNewMember] = useState(NEW_MEMBER)
   const [newMemberErrors, setNewMemberErrors] = useState({})
@@ -176,6 +179,45 @@ export default function Attendance() {
     onError: (error) => toast.error(error.message),
   })
 
+  /**
+   * A scanned badge goes through the very same action as the manual "Add"
+   * button, so it inherits the idempotent attach and the office scoping.
+   */
+  const handleScan = async (token) => {
+    try {
+      await attach.mutateAsync({ qr_token: token })
+
+      // Name the person back so the operator can see who was just counted.
+      const scanned = await search('members', {
+        filters: [{ field: 'qr_token', operator: '=', value: token }],
+        limit: 10,
+      })
+      const member = scanned.data?.[0]
+
+      setScanLog((current) =>
+        [
+          {
+            at: Date.now(),
+            label: member ? fullName(member) || `Member #${member.id}` : 'Member',
+            status: 'added',
+          },
+          ...current,
+        ].slice(0, 20),
+      )
+    } catch (error) {
+      setScanLog((current) =>
+        [
+          {
+            at: Date.now(),
+            label: error.status === 404 ? 'Unknown badge' : error.message,
+            status: 'failed',
+          },
+          ...current,
+        ].slice(0, 20),
+      )
+    }
+  }
+
   const createAndAttach = async (event) => {
     event.preventDefault()
     setNewMemberErrors({})
@@ -260,10 +302,16 @@ export default function Attendance() {
                   </span>
                 ) : null}
               </CardTitle>
-              <Button size="sm" variant="outline" onClick={() => setNewMemberOpen(true)}>
-                <Plus className="size-4" />
-                New member
-              </Button>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => setScannerOpen(true)}>
+                  <ScanLine className="size-4" />
+                  Scan
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setNewMemberOpen(true)}>
+                  <Plus className="size-4" />
+                  New member
+                </Button>
+              </div>
             </div>
             <SearchInput value={term} onChange={setTerm} placeholder="Search members" />
           </CardHeader>
@@ -420,6 +468,16 @@ export default function Attendance() {
           )}
         </Card>
       </div>
+
+      <QrScannerDialog
+        open={scannerOpen}
+        onOpenChange={(next) => {
+          setScannerOpen(next)
+          if (!next) setScanLog([])
+        }}
+        onToken={handleScan}
+        log={scanLog}
+      />
 
       <Dialog open={newMemberOpen} onOpenChange={setNewMemberOpen}>
         <DialogContent>

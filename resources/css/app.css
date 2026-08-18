@@ -101,3 +101,26 @@
     }
   }
 }
+
+/* Badge sheet printing: paper is white, and browser chrome must not eat the grid. */
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Shadows and translucency waste toner and print as grey mud. */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+}

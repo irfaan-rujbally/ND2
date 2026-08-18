@@ -37,9 +37,9 @@ function Brand({ className }) {
   )
 }
 
-function NavItems({ onNavigate }) {
+function NavItems({ onNavigate, className }) {
   return (
-    <nav className="flex flex-col gap-1 p-3">
+    <nav className={cn('flex flex-col gap-1 p-3', className)}>
       {navigation.map(({ to, label, icon: Icon, end }) => (
         <NavLink
           key={to}
@@ -93,9 +93,9 @@ export function AppLayout() {
   return (
     <div className="flex min-h-dvh bg-background">
       {/* Desktop sidebar */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r bg-card lg:flex">
+      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r bg-card lg:flex">
         <Brand />
-        <NavItems />
+        <NavItems className="min-h-0 flex-1 overflow-y-auto" />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">

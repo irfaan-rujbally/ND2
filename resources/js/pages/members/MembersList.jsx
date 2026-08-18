@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Plus, UserPlus } from 'lucide-react'
+import { Plus, QrCode, UserPlus } from 'lucide-react'
 import { search, stats as fetchStats } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -95,6 +95,13 @@ export default function MembersList() {
   return (
     <div>
       <PageHeader title="Members" description="Party members registered for this office.">
+        {/* Carries the current filters, so you can print one constituency at a time. */}
+        <Button asChild variant="outline">
+          <Link to={`/members/badges?${params.toString()}`}>
+            <QrCode className="size-4" />
+            Print badges
+          </Link>
+        </Button>
         <Button asChild>
           <Link to="/members/create">
             <Plus className="size-4" />

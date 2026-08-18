@@ -20,6 +20,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState, Field, PageHeader, Spinner } from '@/components/common'
 import { CheckboxField, CheckboxGroup, FileField, FormSection, RadioGroup } from '@/components/form-controls'
+import { MemberQrPanel } from '@/components/qr-badge'
 import {
   AGE_RANGES,
   COMMUNICATION_METHODS,
@@ -479,6 +480,20 @@ export default function MemberForm() {
               </FormSection>
             </CardContent>
           </Card>
+
+          {/* ------------------------------------------------ Badge */}
+          {isEdit && memberQuery.data ? (
+            <Card>
+              <CardContent className="p-6 sm:p-8">
+                <FormSection
+                  title="Attendance badge"
+                  description="Printed QR code used to record this member at a meeting."
+                >
+                  <MemberQrPanel member={memberQuery.data} />
+                </FormSection>
+              </CardContent>
+            </Card>
+          ) : null}
 
           {/* ------------------------------------------------ Documents */}
           <Card>

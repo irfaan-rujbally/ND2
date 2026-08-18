@@ -14,6 +14,28 @@ class Member extends Model
 
     protected $table = 'members';
 
+    /**
+     * Every member needs a QR token from the moment they exist, so their badge
+     * can be printed straight after registration.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $member) {
+            if (blank($member->qr_token)) {
+                $member->qr_token = static::freshQrToken();
+            }
+        });
+    }
+
+    public static function freshQrToken(): string
+    {
+        do {
+            $token = \Illuminate\Support\Str::random(32);
+        } while (static::withTrashed()->where('qr_token', $token)->exists());
+
+        return $token;
+    }
+
     protected function casts(): array
     {
         return [

@@ -15,7 +15,8 @@ use Lomkit\Rest\Http\Requests\RestRequest;
  *
  * Replaces the old MeetingsController::addToMeeting endpoint and keeps both of
  * its behaviours: an existing member can be attached by id, or a brand new
- * member can be created inline from the attendance screen.
+ * member can be created inline from the attendance screen. A member can also be
+ * identified by the QR token on their badge, which is how phone scanning works.
  *
  * Unlike the old endpoint it will never create a duplicate attendance row. The
  * pivot is soft deleted, so a previously removed attendance is restored rather
@@ -27,6 +28,7 @@ class AttachMemberToMeetingAction extends RestAction
     {
         return [
             'member_id'    => ['nullable', 'integer', 'exists:members,id'],
+            'qr_token'     => ['nullable', 'string', 'size:32'],
             'first_name'   => ['nullable', 'string', 'max:50'],
             'last_name'    => ['nullable', 'string', 'max:50'],
             'email'        => ['nullable', 'email', 'max:50'],
@@ -60,6 +62,15 @@ class AttachMemberToMeetingAction extends RestAction
      */
     protected function resolveMember(Collection $values, Meeting $meeting): Member
     {
+        // A scanned QR badge identifies the member by token.
+        if ($values->get('qr_token')) {
+            return Member::where('office_id', $meeting->office_id)
+                ->where('qr_token', $values->get('qr_token'))
+                ->firstOr(function () {
+                    abort(404, 'This QR code does not match any member of this office.');
+                });
+        }
+
         if ($values->get('member_id')) {
             return Member::where('office_id', $meeting->office_id)
                 ->findOrFail($values->get('member_id'));

@@ -18,6 +18,7 @@ import Unauthorized from '@/pages/Unauthorized'
 import NotFound from '@/pages/NotFound'
 import MembersList from '@/pages/members/MembersList'
 import MemberForm from '@/pages/members/MemberForm'
+import BadgeSheet from '@/pages/members/BadgeSheet'
 import MeetingsList from '@/pages/meetings/MeetingsList'
 import MeetingForm from '@/pages/meetings/MeetingForm'
 import Attendance from '@/pages/meetings/Attendance'
@@ -77,6 +78,18 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+
+      {/* Print view: deliberately outside AppLayout so no app chrome is printed. */}
+      <Route
+        path="/members/badges"
+        element={
+          <RequireAuth>
+            <RequireAdmin>
+              <BadgeSheet />
+            </RequireAdmin>
+          </RequireAuth>
+        }
+      />
 
       <Route
         element={

@@ -15,6 +15,8 @@ class MemberResource extends Resource
     {
         return [
             'id',
+            // Needed by the admin UI to render each member's QR badge.
+            'qr_token',
             'first_name',
             'last_name',
             'phone',
