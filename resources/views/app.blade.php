@@ -1,20 +1,19 @@
 <!DOCTYPE html>
-<html class="h-full bg-gray-100">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#1b2a8f" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 
-    {{-- Inertia --}}
-    <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=smoothscroll,NodeList.prototype.forEach,Promise,Object.values,Object.assign" defer></script>
+    <title>Nouveaux Démocrates</title>
 
-    {{-- Ping CRM --}}
-    <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=String.prototype.startsWith" defer></script>
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet" />
 
-    @vite('resources/js/app.js')
-    @inertiaHead
+    @vite(['resources/css/app.css', 'resources/js/app.jsx'])
 </head>
-<body class="font-sans leading-none text-gray-700 antialiased">
-    @inertia
+<body class="h-full">
+    <div id="app" class="h-full"></div>
 </body>
 </html>

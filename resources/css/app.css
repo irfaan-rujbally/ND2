@@ -1,7 +1,103 @@
-@import 'tailwindcss/base';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@import 'tailwindcss/components';
-@import 'buttons';
-@import 'form';
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 232 40% 12%;
 
-@import 'tailwindcss/utilities';
+    --card: 0 0% 100%;
+    --card-foreground: 232 40% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 232 40% 12%;
+
+    /* Nouveaux Democrates blue */
+    --primary: 232 68% 33%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 232 30% 94%;
+    --secondary-foreground: 232 45% 25%;
+
+    --muted: 220 20% 95%;
+    --muted-foreground: 220 12% 45%;
+
+    --accent: 232 40% 94%;
+    --accent-foreground: 232 55% 28%;
+
+    /* Nouveaux Democrates red */
+    --destructive: 354 97% 41%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 18% 88%;
+    --input: 220 18% 88%;
+    --ring: 232 68% 45%;
+
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 232 32% 9%;
+    --foreground: 210 30% 96%;
+
+    --card: 232 30% 13%;
+    --card-foreground: 210 30% 96%;
+
+    --popover: 232 30% 13%;
+    --popover-foreground: 210 30% 96%;
+
+    --primary: 232 75% 66%;
+    --primary-foreground: 232 45% 12%;
+
+    --secondary: 232 22% 20%;
+    --secondary-foreground: 210 30% 92%;
+
+    --muted: 232 20% 18%;
+    --muted-foreground: 220 14% 65%;
+
+    --accent: 232 24% 22%;
+    --accent-foreground: 210 30% 94%;
+
+    --destructive: 354 82% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 232 18% 24%;
+    --input: 232 18% 26%;
+    --ring: 232 70% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  /* Keep long tables usable on phones without the page itself scrolling sideways. */
+  .scroll-x {
+    @apply overflow-x-auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@layer utilities {
+  /* Respect the OS "reduce motion" setting everywhere, including the 3D canvas. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}

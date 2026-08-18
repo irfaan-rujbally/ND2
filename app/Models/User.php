@@ -59,6 +59,11 @@ class User extends Authenticatable
         return $this->belongsTo(Office::class);
     }
 
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(Account::class);
+    }
+
     public function getNameAttribute()
     {
         return $this->first_name.' '.$this->last_name;
