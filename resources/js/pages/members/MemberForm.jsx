@@ -171,11 +171,15 @@ export default function MemberForm() {
           : { operation: 'create', attributes },
       ])
     },
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['members'] })
       queryClient.invalidateQueries({ queryKey: ['stats'] })
       toast.success(isEdit ? 'Member updated.' : 'Member created.')
-      navigate('/members')
+
+      // After registering someone, land on their record so their attendance
+      // badge is right there to print, rather than bouncing back to the list.
+      const createdId = response?.created?.[0]
+      navigate(isEdit || !createdId ? '/members' : `/members/${createdId}/edit`)
     },
     onError: (error) => {
       setErrors(error.errors ?? {})
