@@ -66,7 +66,18 @@ export default function MemberForm() {
   const queryClient = useQueryClient()
   const { user } = useAuth()
 
-  const [form, setForm] = useState(EMPTY)
+  /*
+   * Radix Select calls onValueChange with its previous value when the controlled
+   * value is changed from outside after mount, which silently wiped every select
+   * on this form. The fix is to never change a select's value externally: the
+   * create screen seeds its office here, and the edit screen waits for hydration
+   * (see `hydrated`) before the form is rendered at all.
+   */
+  const [form, setForm] = useState(() => ({
+    ...EMPTY,
+    office_id: user?.office_id != null ? String(user.office_id) : '',
+  }))
+  const [hydrated, setHydrated] = useState(!id)
   const [uploadNames, setUploadNames] = useState({ cv: '', documents: '' })
   const [errors, setErrors] = useState({})
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -118,10 +129,9 @@ export default function MemberForm() {
         documents_confirmed: Boolean(m.documents_confirmed),
         office_id: m.office_id != null ? String(m.office_id) : '',
       })
-    } else if (!isEdit && user?.office_id) {
-      setForm((current) => ({ ...current, office_id: String(user.office_id) }))
+      setHydrated(true)
     }
-  }, [isEdit, memberQuery.data, user?.office_id])
+  }, [isEdit, memberQuery.data])
 
   const save = useMutation({
     mutationFn: () => {
@@ -201,7 +211,9 @@ export default function MemberForm() {
   }
 
   const offices = officesQuery.data?.data ?? []
-  const loading = isEdit && memberQuery.isPending
+  // Offices must be loaded too: a select whose value has no matching item yet is
+  // the same external-change trap.
+  const loading = !officesQuery.isSuccess || (isEdit && (memberQuery.isPending || !hydrated))
 
   return (
     <div className="mx-auto max-w-3xl">

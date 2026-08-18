@@ -20,30 +20,42 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('members', function (Blueprint $table) {
-            $table->date('date_of_birth')->nullable()->after('age');
-            $table->string('national_id')->nullable()->after('date_of_birth');
-            $table->string('gender', 20)->nullable()->after('national_id');
-
-            $table->string('alternative_contact')->nullable()->after('phone');
-            $table->boolean('whatsapp_available')->default(false)->after('alternative_contact');
-
-            $table->string('profession')->nullable()->after('address');
-            $table->string('employer_name')->nullable()->after('profession');
-            $table->text('skills_expertise')->nullable()->after('employer_name');
-
+        $columns = [
+            'date_of_birth'             => fn (Blueprint $t) => $t->date('date_of_birth')->nullable()->after('age'),
+            'national_id'               => fn (Blueprint $t) => $t->string('national_id')->nullable()->after('date_of_birth'),
+            'gender'                    => fn (Blueprint $t) => $t->string('gender', 20)->nullable()->after('national_id'),
+            'alternative_contact'       => fn (Blueprint $t) => $t->string('alternative_contact')->nullable()->after('phone'),
+            'whatsapp_available'        => fn (Blueprint $t) => $t->boolean('whatsapp_available')->default(false)->after('alternative_contact'),
+            'profession'                => fn (Blueprint $t) => $t->string('profession')->nullable()->after('address'),
+            'employer_name'             => fn (Blueprint $t) => $t->string('employer_name')->nullable()->after('profession'),
+            'skills_expertise'          => fn (Blueprint $t) => $t->text('skills_expertise')->nullable()->after('employer_name'),
             // Multi-select answers, stored as JSON arrays.
-            $table->json('communication_preferences')->nullable()->after('skills_expertise');
-            $table->json('volunteer_interests')->nullable()->after('communication_preferences');
+            'communication_preferences' => fn (Blueprint $t) => $t->json('communication_preferences')->nullable()->after('skills_expertise'),
+            'volunteer_interests'       => fn (Blueprint $t) => $t->json('volunteer_interests')->nullable()->after('communication_preferences'),
+            'referrer_name'             => fn (Blueprint $t) => $t->string('referrer_name')->nullable()->after('volunteer_interests'),
+            'referrer_contact'          => fn (Blueprint $t) => $t->string('referrer_contact')->nullable()->after('referrer_name'),
+            'how_heard_about_us'        => fn (Blueprint $t) => $t->string('how_heard_about_us', 50)->nullable()->after('referrer_contact'),
+            'cv_path'                   => fn (Blueprint $t) => $t->string('cv_path')->nullable()->after('how_heard_about_us'),
+            'documents_path'            => fn (Blueprint $t) => $t->string('documents_path')->nullable()->after('cv_path'),
+            'documents_confirmed'       => fn (Blueprint $t) => $t->boolean('documents_confirmed')->default(false)->after('documents_path'),
+        ];
 
-            $table->string('referrer_name')->nullable()->after('volunteer_interests');
-            $table->string('referrer_contact')->nullable()->after('referrer_name');
+        // Only add what is missing, so a re-run or a partially applied migration
+        // cannot fail on "column already exists".
+        $missing = array_filter(
+            $columns,
+            fn ($_, $name) => ! Schema::hasColumn('members', $name),
+            ARRAY_FILTER_USE_BOTH
+        );
 
-            $table->string('how_heard_about_us', 50)->nullable()->after('referrer_contact');
+        if ($missing === []) {
+            return;
+        }
 
-            $table->string('cv_path')->nullable()->after('how_heard_about_us');
-            $table->string('documents_path')->nullable()->after('cv_path');
-            $table->boolean('documents_confirmed')->default(false)->after('documents_path');
+        Schema::table('members', function (Blueprint $table) use ($missing) {
+            foreach ($missing as $define) {
+                $define($table);
+            }
         });
     }
 

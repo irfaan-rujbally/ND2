@@ -37,7 +37,17 @@ export default function UserForm() {
   const queryClient = useQueryClient()
   const { user: currentUser } = useAuth()
 
-  const [form, setForm] = useState(EMPTY)
+  /*
+   * Radix Select calls onValueChange with its previous value when the controlled
+   * value changes from outside after mount, which wipes the selection. So the
+   * value is correct from the very first render: seeded here on create, and the
+   * form is withheld until `hydrated` on edit.
+   */
+  const [form, setForm] = useState(() => ({
+    ...EMPTY,
+    office_id: currentUser?.office_id != null ? String(currentUser.office_id) : '',
+  }))
+  const [hydrated, setHydrated] = useState(!id)
   const [errors, setErrors] = useState({})
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -67,10 +77,9 @@ export default function UserForm() {
         owner: Boolean(record.owner),
         office_id: record.office_id != null ? String(record.office_id) : '',
       })
-    } else if (!isEdit && currentUser?.office_id) {
-      setForm((current) => ({ ...current, office_id: String(currentUser.office_id) }))
+      setHydrated(true)
     }
-  }, [isEdit, userQuery.data, currentUser?.office_id])
+  }, [isEdit, userQuery.data])
 
   const save = useMutation({
     mutationFn: () => {
@@ -131,7 +140,7 @@ export default function UserForm() {
   }
 
   const offices = officesQuery.data?.data ?? []
-  const loading = isEdit && userQuery.isPending
+  const loading = !officesQuery.isSuccess || (isEdit && (userQuery.isPending || !hydrated))
   const isSelf = isEdit && currentUser?.id === Number(id)
 
   return (

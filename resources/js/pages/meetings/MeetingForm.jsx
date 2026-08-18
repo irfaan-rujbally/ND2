@@ -30,7 +30,17 @@ export default function MeetingForm() {
   const queryClient = useQueryClient()
   const { user } = useAuth()
 
-  const [form, setForm] = useState(EMPTY)
+  /*
+   * Radix Select calls onValueChange with its previous value when the controlled
+   * value changes from outside after mount, which wipes the selection. So the
+   * value is correct from the very first render: seeded here on create, and the
+   * form is withheld until `hydrated` on edit.
+   */
+  const [form, setForm] = useState(() => ({
+    ...EMPTY,
+    office_id: user?.office_id != null ? String(user.office_id) : '',
+  }))
+  const [hydrated, setHydrated] = useState(!id)
   const [errors, setErrors] = useState({})
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -60,10 +70,9 @@ export default function MeetingForm() {
         attachment_path: meeting.attachment_path ?? '',
         office_id: meeting.office_id != null ? String(meeting.office_id) : '',
       })
-    } else if (!isEdit && user?.office_id) {
-      setForm((current) => ({ ...current, office_id: String(user.office_id) }))
+      setHydrated(true)
     }
-  }, [isEdit, meetingQuery.data, user?.office_id])
+  }, [isEdit, meetingQuery.data])
 
   const save = useMutation({
     mutationFn: () => {
@@ -126,7 +135,7 @@ export default function MeetingForm() {
   }
 
   const offices = officesQuery.data?.data ?? []
-  const loading = isEdit && meetingQuery.isPending
+  const loading = !officesQuery.isSuccess || (isEdit && (meetingQuery.isPending || !hydrated))
   const participants = meetingQuery.data?.members_count
 
   return (

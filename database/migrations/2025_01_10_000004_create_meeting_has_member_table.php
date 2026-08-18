@@ -18,6 +18,12 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Idempotent: this table predates version control, so it already exists on
+        // any environment that was running the app before this migration was written.
+        if (Schema::hasTable('meeting_has_member')) {
+            return;
+        }
+
         Schema::create('meeting_has_member', function (Blueprint $table) {
             $table->integer('id', true);
             $table->integer('meeting_id')->nullable();

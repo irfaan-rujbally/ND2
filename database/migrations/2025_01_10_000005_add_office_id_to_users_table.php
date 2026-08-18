@@ -15,6 +15,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasColumn('users', 'office_id')) {
+            return;
+        }
+
         Schema::table('users', function (Blueprint $table) {
             $table->integer('office_id')->nullable()->after('deleted_at');
         });
