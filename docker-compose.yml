@@ -46,6 +46,13 @@ services:
     volumes:
       - db_data:/var/lib/mysql
     restart: always
+    # Loopback only. The app reaches the database as `crm_db` over the Docker
+    # network and needs no published port at all; this mapping exists purely so
+    # a GUI client can connect through an SSH tunnel. Never write "3306:3306"
+    # here -- that binds 0.0.0.0 and puts the members table on the public
+    # internet, which is exactly how it was found.
+    ports:
+      - "127.0.0.1:3306:3306"
     env_file:
       - .env
     environment:
