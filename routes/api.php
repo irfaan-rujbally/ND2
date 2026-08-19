@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\MemberDocumentController;
 use App\Http\Controllers\Api\MemberExportController;
+use App\Http\Controllers\Api\PublicBadgeController;
 use App\Http\Controllers\Api\StatsController;
 use Illuminate\Support\Facades\Route;
 use Lomkit\Rest\Facades\Rest;
@@ -22,6 +23,15 @@ use Lomkit\Rest\Facades\Rest;
 Route::post('auth/login', [AuthController::class, 'login'])
     ->middleware('throttle:10,1')
     ->name('api.auth.login');
+
+/*
+ * The one unauthenticated endpoint: a member proves who they are with their
+ * national ID and date of birth, and gets their own attendance badge back.
+ * Throttled hard because those two facts are all that stand in front of it.
+ */
+Route::post('public/member-badge', PublicBadgeController::class)
+    ->middleware('throttle:6,1')
+    ->name('api.public.member-badge');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('auth/me', [AuthController::class, 'me'])->name('api.auth.me');

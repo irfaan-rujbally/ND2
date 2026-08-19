@@ -1,13 +1,55 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AlertTriangle, Camera, CameraOff, Check, RotateCcw } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Camera, CameraOff, Check, Info, Loader2, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { parseMemberQr } from '@/lib/qr'
 import { cn } from '@/lib/utils'
 
-/** Same code re-read this often is ignored, so one badge is not counted twice. */
-const REPEAT_GUARD_MS = 2500
+/**
+ * What the operator is shown between one badge and the next. `result` is null
+ * while the attach request is still in flight.
+ */
+function ScanResult({ result, onContinue }) {
+  const status = result?.status
+
+  const tone =
+    status === 'added'
+      ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400'
+      : status === 'already'
+        ? 'border-amber-500/30 bg-amber-500/5 text-amber-700 dark:text-amber-500'
+        : status === 'failed'
+          ? 'border-destructive/30 bg-destructive/5 text-destructive'
+          : 'border-border bg-muted/40 text-muted-foreground'
+
+  const Icon = status === 'added' ? Check : status === 'already' ? Info : status === 'failed' ? AlertTriangle : Loader2
+
+  const message =
+    status === 'added'
+      ? 'Recorded at this meeting.'
+      : status === 'already'
+        ? 'Member already scanned.'
+        : status === 'failed'
+          ? 'Not recorded.'
+          : 'Checking the badge…'
+
+  return (
+    <div className="space-y-3">
+      <div className={cn('flex items-start gap-3 rounded-lg border p-3', tone)}>
+        <Icon className={cn('mt-0.5 size-4 shrink-0', !status && 'animate-spin')} />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">{result?.label ?? 'Reading…'}</p>
+          <p className="text-sm">{message}</p>
+        </div>
+      </div>
+
+      <Button className="w-full" onClick={onContinue} disabled={!status} autoFocus>
+        <ArrowRight className="size-4" />
+        Continue scanning
+      </Button>
+    </div>
+  )
+}
 
 function cameraError(error) {
   if (!window.isSecureContext) {
@@ -32,20 +74,30 @@ function cameraError(error) {
 }
 
 /**
- * Continuous QR scanner for recording attendance at a door: it keeps the camera
- * running and reports each new badge, so people can be scanned one after another
- * without reopening anything.
+ * QR scanner for recording attendance at a door. The camera stays open across
+ * badges, but decoding stops on every read: the operator sees who was scanned
+ * and what happened to them, then presses Continue for the next person. Without
+ * that pause a result flashed past before it could be read, and a badge left in
+ * frame was scanned over and over.
  */
-export function QrScannerDialog({ open, onOpenChange, onToken, log = [] }) {
+export function QrScannerDialog({ open, onOpenChange, onToken, log = [], result = null, onContinue }) {
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
   const frameRef = useRef(null)
-  const lastSeenRef = useRef({ token: null, at: 0 })
+  const lastTokenRef = useRef(null)
+
+  /*
+   * Ref *and* state: the animation frame loop reads the ref (it must see the
+   * change immediately, without waiting for a re-render), while the markup
+   * renders from the state.
+   */
+  const pausedRef = useRef(false)
 
   const [error, setError] = useState(null)
   const [ready, setReady] = useState(false)
   const [hint, setHint] = useState(null)
+  const [paused, setPaused] = useState(false)
 
   const stop = useCallback(() => {
     cancelAnimationFrame(frameRef.current)
@@ -58,9 +110,27 @@ export function QrScannerDialog({ open, onOpenChange, onToken, log = [] }) {
   // The decoder is only needed once the camera is actually open.
   const decoderRef = useRef(null)
 
+  /*
+   * onToken is redefined on every render of the page holding this dialog. Read
+   * through a ref so scanFrame stays referentially stable: it is a dependency
+   * of the effect that owns the camera, so a changing identity tore the stream
+   * down and restarted it after every scan -- a visible black flash, right when
+   * the operator is reading the result.
+   */
+  const onTokenRef = useRef(onToken)
+  useEffect(() => {
+    onTokenRef.current = onToken
+  }, [onToken])
+
   const scanFrame = useCallback(() => {
     const video = videoRef.current
     const canvas = canvasRef.current
+
+    // Holding on a result: keep the preview live, but do no decoding work.
+    if (pausedRef.current) {
+      frameRef.current = requestAnimationFrame(scanFrame)
+      return
+    }
 
     if (!video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA) {
       frameRef.current = requestAnimationFrame(scanFrame)
@@ -90,20 +160,37 @@ export function QrScannerDialog({ open, onOpenChange, onToken, log = [] }) {
 
       if (!token) {
         setHint('That code is not a member badge.')
-      } else {
-        const now = Date.now()
-        const { token: lastToken, at } = lastSeenRef.current
-        if (token !== lastToken || now - at > REPEAT_GUARD_MS) {
-          lastSeenRef.current = { token, at: now }
-          setHint(null)
-          navigator.vibrate?.(60)
-          onToken(token)
-        }
+      } else if (token !== lastTokenRef.current) {
+        /*
+         * Identity, not a timer: after Continue the same badge is often still
+         * sitting in front of the lens, and a time based guard would re-scan it
+         * the moment the window lapsed. It takes a different code — or the
+         * button below — to read the same person twice.
+         */
+        lastTokenRef.current = token
+        pausedRef.current = true
+        setPaused(true)
+        setHint(null)
+        navigator.vibrate?.(60)
+        onTokenRef.current(token)
       }
     }
 
     frameRef.current = requestAnimationFrame(scanFrame)
-  }, [onToken])
+  }, [])
+
+  const resume = useCallback(() => {
+    pausedRef.current = false
+    setPaused(false)
+    setHint(null)
+    onContinue?.()
+  }, [onContinue])
+
+  /** Deliberately re-reading the badge still in frame. */
+  const scanSameAgain = useCallback(() => {
+    lastTokenRef.current = null
+    resume()
+  }, [resume])
 
   useEffect(() => {
     if (!open) {
@@ -114,6 +201,9 @@ export function QrScannerDialog({ open, onOpenChange, onToken, log = [] }) {
     let cancelled = false
     setError(null)
     setHint(null)
+    pausedRef.current = false
+    setPaused(false)
+    lastTokenRef.current = null
 
     const start = async () => {
       if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
@@ -203,11 +293,18 @@ export function QrScannerDialog({ open, onOpenChange, onToken, log = [] }) {
                   </span>
                 </div>
               ) : null}
+
+              {/* Dimmed while paused, so it is obvious the camera is not reading. */}
+              {paused ? <div className="absolute inset-0 bg-black/50" /> : null}
             </div>
 
-            <p className="text-center text-xs text-muted-foreground">
-              {hint ?? 'Point the camera at a badge. Scanning stays on for the next person.'}
-            </p>
+            {paused ? (
+              <ScanResult result={result} onContinue={resume} />
+            ) : (
+              <p className="text-center text-xs text-muted-foreground">
+                {hint ?? 'Point the camera at a badge.'}
+              </p>
+            )}
 
             {log.length ? (
               <div className="max-h-40 overflow-y-auto rounded-lg border">
@@ -234,14 +331,7 @@ export function QrScannerDialog({ open, onOpenChange, onToken, log = [] }) {
               </div>
             ) : null}
 
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => {
-                lastSeenRef.current = { token: null, at: 0 }
-                setHint(null)
-              }}
-            >
+            <Button variant="outline" className="w-full" onClick={scanSameAgain}>
               <RotateCcw className="size-4" />
               Scan the same badge again
             </Button>

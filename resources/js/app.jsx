@@ -13,6 +13,7 @@ import { Spinner } from '@/components/common'
 import { ApiError } from '@/lib/api'
 
 import Login from '@/pages/Login'
+import PublicBadge from '@/pages/PublicBadge'
 import Dashboard from '@/pages/Dashboard'
 import Unauthorized from '@/pages/Unauthorized'
 import NotFound from '@/pages/NotFound'
@@ -79,6 +80,9 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+
+      {/* Public: a member proves who they are and collects their own badge. */}
+      <Route path="/badge" element={<PublicBadge />} />
 
       {/* Print view: deliberately outside AppLayout so no app chrome is printed. */}
       <Route

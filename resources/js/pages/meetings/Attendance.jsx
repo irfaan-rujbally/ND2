@@ -77,6 +77,8 @@ export default function Attendance() {
 
   const [scannerOpen, setScannerOpen] = useState(false)
   const [scanLog, setScanLog] = useState([])
+  /* The verdict on the badge just read; the scanner holds until it arrives. */
+  const [scanResult, setScanResult] = useState(null)
   const [newMemberOpen, setNewMemberOpen] = useState(false)
   const [newMember, setNewMember] = useState(NEW_MEMBER)
   const [newMemberErrors, setNewMemberErrors] = useState({})
@@ -186,42 +188,59 @@ export default function Attendance() {
     onError: (error) => toast.error(error.message),
   })
 
+  /** Records one outcome, both in the running log and as the panel's verdict. */
+  const reportScan = (entry) => {
+    const outcome = { at: Date.now(), ...entry }
+    setScanResult(outcome)
+    setScanLog((current) => [outcome, ...current].slice(0, 20))
+  }
+
   /**
    * A scanned badge goes through the very same action as the manual "Add"
    * button, so it inherits the idempotent attach and the office scoping.
+   *
+   * The member is looked up *before* attaching rather than after. Two reasons:
+   * the aggregate says whether they are already on this meeting, which the
+   * idempotent attach cannot report back on its own; and it names them even
+   * when nothing is attached, so "already scanned" can say who.
    */
   const handleScan = async (token) => {
     try {
-      await attach.mutateAsync({ qr_token: token })
-
-      // Name the person back so the operator can see who was just counted.
-      const scanned = await search('members', {
+      const found = await search('members', {
         filters: [{ field: 'qr_token', operator: '=', value: token }],
+        aggregates: [
+          {
+            relation: 'meetings',
+            type: 'count',
+            filters: [{ field: 'id', operator: '=', value: meetingId }],
+          },
+        ],
         limit: 10,
       })
-      const member = scanned.data?.[0]
 
-      setScanLog((current) =>
-        [
-          {
-            at: Date.now(),
-            label: member ? fullName(member) || `Member #${member.id}` : 'Member',
-            status: 'added',
-          },
-          ...current,
-        ].slice(0, 20),
-      )
+      const member = found.data?.[0]
+
+      // Office scoped, so another office's badge is indistinguishable from an
+      // unknown one -- which is the correct answer to give at this door.
+      if (!member) {
+        reportScan({ label: 'Unknown badge', status: 'failed' })
+        return
+      }
+
+      const label = fullName(member) || `Member #${member.id}`
+
+      if ((member.meetings_count ?? 0) > 0) {
+        reportScan({ label, status: 'already' })
+        return
+      }
+
+      await attach.mutateAsync({ qr_token: token })
+      reportScan({ label, status: 'added' })
     } catch (error) {
-      setScanLog((current) =>
-        [
-          {
-            at: Date.now(),
-            label: error.status === 404 ? 'Unknown badge' : error.message,
-            status: 'failed',
-          },
-          ...current,
-        ].slice(0, 20),
-      )
+      reportScan({
+        label: error.status === 404 ? 'Unknown badge' : error.message,
+        status: 'failed',
+      })
     }
   }
 
@@ -480,10 +499,15 @@ export default function Attendance() {
         open={scannerOpen}
         onOpenChange={(next) => {
           setScannerOpen(next)
-          if (!next) setScanLog([])
+          if (!next) {
+            setScanLog([])
+            setScanResult(null)
+          }
         }}
         onToken={handleScan}
         log={scanLog}
+        result={scanResult}
+        onContinue={() => setScanResult(null)}
       />
 
       <Dialog open={newMemberOpen} onOpenChange={setNewMemberOpen}>

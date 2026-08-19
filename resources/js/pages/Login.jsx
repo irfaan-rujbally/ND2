@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Navigate, useLocation } from 'react-router-dom'
-import { LogIn } from 'lucide-react'
+import { Link, Navigate, useLocation } from 'react-router-dom'
+import { LogIn, QrCode } from 'lucide-react'
 import { useAuth } from '@/auth/AuthProvider'
 import { ThreeBackground } from '@/components/ThreeBackground'
 import { Button } from '@/components/ui/button'
@@ -110,6 +110,19 @@ export default function Login() {
                 {submitting ? 'Signing in…' : 'Login'}
               </Button>
             </form>
+
+            {/* Members have no account: this is how they collect their badge. */}
+            <div className="mt-6 border-t pt-5">
+              <p className="mb-2 text-center text-xs text-muted-foreground">
+                A member without an account?
+              </p>
+              <Button asChild variant="outline" size="lg" className="w-full">
+                <Link to="/badge">
+                  <QrCode className="size-4" />
+                  Get QR code
+                </Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
