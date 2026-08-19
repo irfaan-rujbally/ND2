@@ -28,10 +28,18 @@ const navigation = [
 function Brand({ className }) {
   return (
     <div className={cn('flex h-16 shrink-0 items-center border-b px-2', className)}>
+      {/*
+        logo-new-nav.png is logo-new.png pre-scaled to 260x104 — exactly twice
+        the 130x52 this row renders, so it stays crisp on a retina screen. The
+        1002px original went soft here: browsers resample a 7.7x reduction in
+        one cheap pass and the thin strokes in the tree smear.
+      */}
       <img
-        src="/images/banner.jpeg"
+        src="/images/logo-new-nav.png"
         alt="Nouveaux Démocrates"
-        className="h-[52px] w-full rounded-md object-contain"
+        width={260}
+        height={104}
+        className="h-[52px] w-full object-contain"
       />
     </div>
   )

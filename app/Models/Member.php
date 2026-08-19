@@ -71,6 +71,42 @@ class Member extends Model
         });
     }
 
+    /**
+     * Orders members by when they were last recorded at a given meeting, most
+     * recent first — what the attendance panel wants, so somebody just scanned
+     * in appears at the top rather than wherever the alphabet puts them.
+     *
+     * Correlated subqueries rather than a join: the pivot carries no unique
+     * index (see the meeting_has_member migration), so a join could duplicate a
+     * member if a stray un-deleted duplicate pair ever existed.
+     *
+     * Ordering keys, in order of preference:
+     *  - updated_at, because attaching an already-attached member restores the
+     *    existing pivot row rather than inserting a new one, so its created_at
+     *    still reads as the original attachment;
+     *  - created_at, for rows imported before updated_at was written;
+     *  - the pivot id, which is monotonic, as the final tie-break.
+     */
+    public function scopeOrderByAttendanceAddedAt($query, int $meetingId, string $direction = 'desc')
+    {
+        // SoftDeletes on MeetingHasMember already excludes detached rows.
+        $pivot = MeetingHasMember::query()
+            ->whereColumn('meeting_has_member.member_id', 'members.id')
+            ->where('meeting_has_member.meeting_id', $meetingId)
+            ->latest('meeting_has_member.id')
+            ->limit(1);
+
+        return $query
+            ->reorder()  // Drops the resource's default name ordering.
+            ->orderBy(
+                (clone $pivot)->select(\Illuminate\Support\Facades\DB::raw(
+                    'COALESCE(meeting_has_member.updated_at, meeting_has_member.created_at)'
+                )),
+                $direction
+            )
+            ->orderBy((clone $pivot)->select('meeting_has_member.id'), $direction);
+    }
+
     public function office(): BelongsTo
     {
         return $this->belongsTo(Office::class);

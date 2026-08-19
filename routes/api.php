@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\MemberDocumentController;
+use App\Http\Controllers\Api\MemberExportController;
 use App\Http\Controllers\Api\StatsController;
 use Illuminate\Support\Facades\Route;
 use Lomkit\Rest\Facades\Rest;
@@ -35,6 +36,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('members/{member}/documents/{kind}', [MemberDocumentController::class, 'show'])
         ->name('api.member-documents.show');
+
+    // Spreadsheet download, registered before the resource so the literal
+    // 'export' segment is not read as a member key.
+    Route::get('members/export', MemberExportController::class)
+        ->name('api.members.export');
 
     Rest::resource('members', \App\Rest\Controllers\MembersController::class)
         ->withSoftDeletes();

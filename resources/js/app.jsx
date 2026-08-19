@@ -18,6 +18,7 @@ import Unauthorized from '@/pages/Unauthorized'
 import NotFound from '@/pages/NotFound'
 import MembersList from '@/pages/members/MembersList'
 import MemberForm from '@/pages/members/MemberForm'
+import MemberView from '@/pages/members/MemberView'
 import BadgeSheet from '@/pages/members/BadgeSheet'
 import MeetingsList from '@/pages/meetings/MeetingsList'
 import MeetingForm from '@/pages/meetings/MeetingForm'
@@ -110,6 +111,7 @@ function App() {
         <Route path="members">
           <Route index element={<RequireAdmin><MembersList /></RequireAdmin>} />
           <Route path="create" element={<RequireAdmin><MemberForm /></RequireAdmin>} />
+          <Route path=":id" element={<RequireAdmin><MemberView /></RequireAdmin>} />
           <Route path=":id/edit" element={<RequireAdmin><MemberForm /></RequireAdmin>} />
         </Route>
 

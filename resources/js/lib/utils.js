@@ -33,6 +33,19 @@ export function humanizeValidationMessage(message) {
   return message.replace(/mutate\.\d+\.attributes\./g, '')
 }
 
+/** Saves a blob under `filename`, the same way the QR badge download does. */
+export function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  // Revoking immediately can cancel the download in Safari; a tick is enough.
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 export function fullName(record) {
   if (!record) return ''
   return [record.first_name, record.last_name].filter(Boolean).join(' ').trim()

@@ -1,0 +1,135 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Meeting;
+use App\Models\MeetingHasMember;
+use App\Models\Member;
+use App\Models\Office;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
+use Spatie\Permission\Models\Role;
+use Tests\TestCase;
+
+/**
+ * Covers Member::scopeOrderByAttendanceAddedAt, which the attendance panel uses
+ * to show the most recently recorded participant first.
+ */
+class AttendanceOrderTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private User $admin;
+
+    private Office $office;
+
+    private Meeting $meeting;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Role::create(['name' => 'admin', 'guard_name' => 'web']);
+
+        $this->office = Office::create(['name' => 'Bonne Terre']);
+
+        $this->admin = new User();
+        $this->admin->account_id = 1;
+        $this->admin->first_name = 'Test';
+        $this->admin->last_name = 'User';
+        $this->admin->email = 'admin@example.com';
+        $this->admin->password = 'secret';
+        $this->admin->office_id = $this->office->id;
+        $this->admin->save();
+        $this->admin->assignRole('admin');
+
+        $this->meeting = new Meeting();
+        $this->meeting->title = 'Jeunes Démocrates';
+        $this->meeting->office_id = $this->office->id;
+        $this->meeting->date = '2025-08-12';
+        $this->meeting->save();
+    }
+
+    public function test_participants_come_back_most_recently_recorded_first(): void
+    {
+        // Alphabetically Alpha, Bravo, Charlie — deliberately not the expected order.
+        $charlie = $this->member('Charlie');
+        $alpha = $this->member('Alpha');
+        $bravo = $this->member('Bravo');
+
+        $this->attach($charlie, '2025-08-12 09:00:00');
+        $this->attach($alpha, '2025-08-12 09:30:00');
+        $this->attach($bravo, '2025-08-12 10:00:00');
+
+        $this->assertSame(['Bravo', 'Alpha', 'Charlie'], $this->participantNames());
+    }
+
+    public function test_a_member_re_added_after_being_removed_moves_to_the_top(): void
+    {
+        $charlie = $this->member('Charlie');
+        $alpha = $this->member('Alpha');
+
+        $pivot = $this->attach($charlie, '2025-08-12 09:00:00');
+        $this->attach($alpha, '2025-08-12 09:30:00');
+
+        $this->assertSame(['Alpha', 'Charlie'], $this->participantNames());
+
+        // What AttachMemberToMeetingAction does for someone attached before:
+        // the existing row is restored rather than a new one inserted.
+        $pivot->delete();
+        $pivot->restore();
+        $pivot->forceFill(['updated_at' => '2025-08-12 11:00:00'])->save();
+
+        $this->assertSame(['Charlie', 'Alpha'], $this->participantNames());
+    }
+
+    public function test_a_detached_member_is_left_out_entirely(): void
+    {
+        $charlie = $this->member('Charlie');
+        $alpha = $this->member('Alpha');
+
+        $this->attach($charlie, '2025-08-12 09:00:00')->delete();
+        $this->attach($alpha, '2025-08-12 09:30:00');
+
+        $this->assertSame(['Alpha'], $this->participantNames());
+    }
+
+    /** @return list<string> */
+    private function participantNames(): array
+    {
+        Sanctum::actingAs($this->admin);
+
+        $response = $this->postJson('/api/members/search', [
+            'search' => [
+                'filters' => [['field' => 'meetings.id', 'operator' => '=', 'value' => $this->meeting->id]],
+                'scopes'  => [['name' => 'orderByAttendanceAddedAt', 'parameters' => [$this->meeting->id]]],
+            ],
+        ]);
+
+        $response->assertOk();
+
+        return array_column($response->json('data'), 'first_name');
+    }
+
+    private function member(string $firstName): Member
+    {
+        $member = new Member();
+        $member->first_name = $firstName;
+        $member->last_name = 'Test';
+        $member->office_id = $this->office->id;
+        $member->save();
+
+        return $member;
+    }
+
+    private function attach(Member $member, string $at): MeetingHasMember
+    {
+        $pivot = new MeetingHasMember();
+        $pivot->meeting_id = $this->meeting->id;
+        $pivot->member_id = $member->id;
+        $pivot->forceFill(['created_at' => $at, 'updated_at' => $at])->save();
+
+        return $pivot;
+    }
+}

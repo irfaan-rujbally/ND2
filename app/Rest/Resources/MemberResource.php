@@ -57,7 +57,7 @@ class MemberResource extends Resource
 
     public function scopes(RestRequest $request): array
     {
-        return ['withTrashed', 'onlyTrashed'];
+        return ['withTrashed', 'onlyTrashed', 'orderByAttendanceAddedAt'];
     }
 
     public function limits(RestRequest $request): array

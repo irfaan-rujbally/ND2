@@ -99,10 +99,17 @@ export default function Attendance() {
       }).then((response) => response.data[0] ?? null),
   })
 
+  /*
+   * Most recently recorded first, so whoever was just scanned in lands at the
+   * top of the panel where it can be confirmed at a glance. The ordering lives
+   * in a scope because it sorts on the pivot's timestamps, which are not fields
+   * of the member resource; `sorts` is left out so the resource's default name
+   * ordering does not win (the scope reorders).
+   */
   const participantsPayload = useMemo(
     () => ({
       filters: [{ field: 'meetings.id', operator: '=', value: meetingId }],
-      sorts: NAME_SORT,
+      scopes: [{ name: 'orderByAttendanceAddedAt', parameters: [meetingId] }],
     }),
     [meetingId],
   )

@@ -168,6 +168,48 @@ export function memberDocumentUrl(memberId, kind) {
   return `/api/members/${memberId}/documents/${kind}`
 }
 
+/**
+ * Spreadsheet of every member matching `filters` — not just the page on screen.
+ *
+ * A plain link cannot be used: the API authenticates with a bearer token, which
+ * a browser navigation would not send. So the file is fetched like any other
+ * request and handed back as a blob for the caller to save.
+ */
+export async function fetchMembersExport(filters = {}) {
+  const token = getToken()
+  const query = new URLSearchParams()
+
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== '' && value !== null && value !== undefined) query.set(key, String(value))
+  })
+
+  const response = await fetch(`/api/members/export?${query.toString()}`, {
+    headers: {
+      Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  })
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      setToken(null)
+      onUnauthenticated?.()
+    }
+
+    // An error comes back as JSON even though the happy path is binary.
+    const payload = await response.json().catch(() => ({}))
+    throw new ApiError(payload.message || `Export failed (${response.status})`, {
+      status: response.status,
+      errors: payload.errors,
+    })
+  }
+
+  const disposition = response.headers.get('Content-Disposition') || ''
+  const match = disposition.match(/filename="?([^"]+)"?/)
+
+  return { blob: await response.blob(), filename: match?.[1] || 'members.xlsx' }
+}
+
 export const auth = {
   login: (credentials) => api.post('/auth/login', credentials),
   me: () => api.get('/auth/me'),
