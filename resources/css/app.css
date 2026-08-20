@@ -132,3 +132,59 @@
     text-shadow: none !important;
   }
 }
+
+/*
+ * Orbiting border lights.
+ *
+ * The ring is a conic gradient used as the *background* of a 2px-padded wrapper;
+ * the solid inner surface covers all but that 2px, so only a ring of gradient
+ * shows. Animating the gradient's start angle sends the bright arcs travelling
+ * around the edge.
+ *
+ * --border-angle has to be a registered @property or it is not an interpolatable
+ * type and the animation snaps from 0 to 360 instead of sweeping.
+ *
+ * Two arcs, red and blue, sit opposite each other, so the party's two colours
+ * chase each other round the border.
+ */
+@property --border-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes border-orbit {
+  to {
+    --border-angle: 360deg;
+  }
+}
+
+@layer components {
+  .orbit-border {
+    /* The unlit part of the ring is a muted blue-grey rather than a translucent
+       white: these plates sit on white, and white-on-white made the border
+       disappear between the two lights. */
+    background: conic-gradient(
+      from var(--border-angle) at 50% 50%,
+      theme(colors.nd.red) 0%,
+      theme(colors.nd.red) 7%,
+      hsl(232 22% 72%) 22%,
+      hsl(232 22% 72%) 28%,
+      theme(colors.nd.blue) 43%,
+      theme(colors.nd.blue) 57%,
+      hsl(232 22% 72%) 72%,
+      hsl(232 22% 72%) 78%,
+      theme(colors.nd.red) 93%,
+      theme(colors.nd.red) 100%
+    );
+    animation: border-orbit 4s linear infinite;
+  }
+
+  /* A moving light in someone's peripheral vision is exactly what this setting
+     is for; the border stays, it just stops travelling. */
+  @media (prefers-reduced-motion: reduce) {
+    .orbit-border {
+      animation: none;
+    }
+  }
+}

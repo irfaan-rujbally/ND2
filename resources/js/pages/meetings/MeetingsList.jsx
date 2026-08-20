@@ -190,7 +190,7 @@ export default function MeetingsList() {
           <div className="space-y-3 md:hidden">
             {rows.map((meeting) => (
               <Card key={meeting.id}>
-                <CardContent className="p-4">
+                <CardContent className="p-4 sm:p-4">
                   <div className="flex items-start justify-between gap-3">
                     <Link
                       to={`/meetings/${meeting.id}/attendance`}

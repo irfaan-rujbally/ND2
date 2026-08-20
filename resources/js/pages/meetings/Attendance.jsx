@@ -349,15 +349,15 @@ export default function Attendance() {
           </CardHeader>
 
           {candidatesQuery.error ? (
-            <CardContent className="pt-5">
+            <CardContent className="pt-5 sm:pt-6">
               <ErrorState error={candidatesQuery.error} onRetry={candidatesQuery.refetch} />
             </CardContent>
           ) : candidatesQuery.isPending ? (
-            <CardContent className="pt-5">
+            <CardContent className="pt-5 sm:pt-6">
               <LineSkeletons />
             </CardContent>
           ) : candidates.length === 0 ? (
-            <CardContent className="pt-5">
+            <CardContent className="pt-5 sm:pt-6">
               <EmptyState
                 icon={UserPlus}
                 title="No members match"
@@ -438,15 +438,15 @@ export default function Attendance() {
           </CardHeader>
 
           {participantsQuery.error ? (
-            <CardContent className="pt-5">
+            <CardContent className="pt-5 sm:pt-6">
               <ErrorState error={participantsQuery.error} onRetry={participantsQuery.refetch} />
             </CardContent>
           ) : participantsQuery.isPending ? (
-            <CardContent className="pt-5">
+            <CardContent className="pt-5 sm:pt-6">
               <LineSkeletons />
             </CardContent>
           ) : participants.length === 0 ? (
-            <CardContent className="pt-5">
+            <CardContent className="pt-5 sm:pt-6">
               <EmptyState
                 icon={UserPlus}
                 title="No participants yet"

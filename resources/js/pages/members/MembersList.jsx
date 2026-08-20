@@ -298,7 +298,7 @@ export default function MembersList() {
           <div className="space-y-3 md:hidden">
             {rows.map((member) => (
               <Card key={member.id}>
-                <CardContent className="p-4">
+                <CardContent className="p-4 sm:p-4">
                   <div className="flex items-start justify-between gap-3">
                     <Link
                       to={`/members/${member.id}`}

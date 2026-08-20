@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { QrImage } from '@/components/qr-badge'
 import { Field, Spinner } from '@/components/common'
+import { OrbitBorder } from '@/components/orbit-border'
 import { qrToDataUrl } from '@/lib/qr'
 import { fullName } from '@/lib/utils'
 
@@ -62,11 +63,24 @@ export default function PublicBadge() {
 
       <div className="relative w-full max-w-md">
         <div className="mb-6 text-center">
-          <img
-            src="/images/banner.jpeg"
-            alt="Nouveaux Démocrates"
-            className="mx-auto h-20 w-auto rounded-lg bg-white p-2 shadow-lg"
-          />
+          {/*
+            Full width so the plate lines up with the card beneath it. logo-new.png
+            is transparent, so the white sits on the wrapper's inner surface and
+            its padding is the band of white around the mark.
+          */}
+          <OrbitBorder innerClassName="bg-white px-4 py-3">
+            {/*
+              The plate stays the card's full width; the mark is capped by height
+              and centred inside it, which is what keeps the header short. Sizing
+              by height rather than width means the logo cannot grow with the
+              plate on a wider screen.
+            */}
+            <img
+              src="/images/logo-new.png"
+              alt="Nouveaux Démocrates"
+              className="mx-auto h-14 w-auto sm:h-16"
+            />
+          </OrbitBorder>
           <p className="mt-4 text-sm font-medium text-white/80">Membership badge</p>
         </div>
 

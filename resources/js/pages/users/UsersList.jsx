@@ -148,7 +148,7 @@ export default function UsersList() {
           <div className="space-y-3 md:hidden">
             {rows.map((user) => (
               <Card key={user.id}>
-                <CardContent className="flex items-center gap-3 p-4">
+                <CardContent className="flex items-center gap-3 p-4 sm:p-4">
                   <span className="grid size-10 shrink-0 place-items-center rounded-full bg-muted text-sm font-semibold text-muted-foreground">
                     {initials(user.first_name, user.last_name)}
                   </span>
