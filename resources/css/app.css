@@ -75,6 +75,14 @@
 
   html {
     -webkit-tap-highlight-color: transparent;
+
+    /*
+     * Always reserve room for the scrollbar. Without this a short page has no
+     * scrollbar and a long one does, so navigating between them shifts every
+     * centred layout sideways by half the scrollbar width -- most visible moving
+     * between the member portal's tabs.
+     */
+    scrollbar-gutter: stable;
   }
 
   body {

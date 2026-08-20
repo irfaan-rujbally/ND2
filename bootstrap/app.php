@@ -25,6 +25,22 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->throttleApi();
 
+        /*
+         * Members and staff share the Sanctum guard, so `auth:sanctum` on its own
+         * does not say which of the two is calling. These two decide that, one
+         * for each direction, by the model behind the token rather than by the
+         * abilities it claims:
+         *
+         *   staff.only    -- the staff API; refuses a Member
+         *   member.portal -- the member portal; refuses a User
+         */
+        $middleware->alias([
+            'abilities'     => \Laravel\Sanctum\Http\Middleware\CheckAbilities::class,
+            'ability'       => \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,
+            'member.portal' => \App\Http\Middleware\EnsureMemberPortalToken::class,
+            'staff.only'    => \App\Http\Middleware\EnsureStaffToken::class,
+        ]);
+
         $middleware->replace(\Illuminate\Http\Middleware\TrustProxies::class, \App\Http\Middleware\TrustProxies::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {

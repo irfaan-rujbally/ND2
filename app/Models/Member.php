@@ -2,17 +2,40 @@
 
 namespace App\Models;
 
+use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Foundation\Auth\Access\Authorizable;
+use Illuminate\Auth\Authenticatable;
+use Laravel\Sanctum\HasApiTokens;
 
-class Member extends Model
+/**
+ * A party member.
+ *
+ * Members are authenticatable so they can sign in to the member portal, but they
+ * are NOT users: they hold no role, no permission and no office authority. The
+ * portal reaches them through tokens carrying only the `member` ability, and the
+ * staff API requires the `staff` ability, so a member token cannot address a
+ * staff endpoint even though both are verified by Sanctum. See routes/api.php.
+ */
+class Member extends Model implements AuthenticatableContract
 {
-    use HasFactory, SoftDeletes;
+    use Authenticatable, Authorizable, HasApiTokens, HasFactory, SoftDeletes;
+
+    /** The single ability a member portal token is granted. */
+    public const PORTAL_ABILITY = 'member';
 
     protected $table = 'members';
+
+    /*
+     * qr_token is deliberately NOT hidden: MemberResource exposes it and the
+     * badge components render it, so hiding it here would blank every printed
+     * badge. It is guarded by policy at the resource, not by serialisation.
+     */
+    protected $hidden = ['password'];
 
     /**
      * Every member needs a QR token from the moment they exist, so their badge
@@ -25,6 +48,44 @@ class Member extends Model
                 $member->qr_token = static::freshQrToken();
             }
         });
+    }
+
+    /**
+     * The password a member starts with: the initial of their last name in upper
+     * case followed by the last seven digits of their phone number, e.g. Ragoo /
+     * 5712 3456 -> "R7123456".
+     *
+     * Seven digits because that is what the rule specifies, and taking them from
+     * the *end* is what makes it work across the register: numbers are stored
+     * inconsistently ("+230 5712 3456", "230-57123456", "57123456"), and the
+     * trailing seven survive every one of those forms.
+     *
+     * Returns null when it cannot be built -- no last name, or fewer than seven
+     * digits of phone. Those members get no default password and therefore cannot
+     * sign in until one is set for them, which is the safe direction to fail:
+     * a short or blank phone must never collapse into a guessable password.
+     */
+    public static function defaultPasswordFor(?string $lastName, ?string $phone): ?string
+    {
+        $initial = strtoupper(substr(trim((string) $lastName), 0, 1));
+
+        if ($initial === '' || ! preg_match('/[A-Z]/', $initial)) {
+            return null;
+        }
+
+        $digits = preg_replace('/\D/', '', (string) $phone);
+
+        if (strlen($digits) < 7) {
+            return null;
+        }
+
+        return $initial.substr($digits, -7);
+    }
+
+    /** The default password for this member, or null if one cannot be built. */
+    public function defaultPassword(): ?string
+    {
+        return static::defaultPasswordFor($this->last_name, $this->phone);
     }
 
     public static function freshQrToken(): string
@@ -44,6 +105,9 @@ class Member extends Model
             'documents_confirmed'       => 'boolean',
             'communication_preferences' => 'array',
             'volunteer_interests'       => 'array',
+            'password'                  => 'hashed',
+            'password_set_at'           => 'datetime',
+            'last_login_at'             => 'datetime',
         ];
     }
 

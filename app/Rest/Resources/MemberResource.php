@@ -3,6 +3,7 @@
 namespace App\Rest\Resources;
 
 use Illuminate\Contracts\Database\Eloquent\Builder;
+use App\Rules\MobileNumber;
 use Lomkit\Rest\Http\Requests\RestRequest;
 use Lomkit\Rest\Relations\BelongsTo;
 use Lomkit\Rest\Relations\BelongsToMany;
@@ -100,7 +101,11 @@ class MemberResource extends Resource
     {
         return [
             'office_id'                   => ['required', 'exists:offices,id'],
-            'phone'                       => ['nullable', 'max:50'],
+            // Format only: a batch mutate can carry several members, so the
+            // rule cannot tell whose number this is and would flag a member's
+            // own number as a clash. Uniqueness is applied on create below,
+            // matching how UserResource handles unique:users,email.
+            'phone'                       => ['nullable', MobileNumber::formatOnly()],
             'alternative_contact'         => ['nullable', 'max:50'],
             'whatsapp_available'          => ['nullable', 'boolean'],
             'age'                         => ['nullable', 'max:50'],
@@ -134,7 +139,7 @@ class MemberResource extends Resource
             'first_name'          => ['required', 'max:50'],
             'last_name'           => ['required', 'max:50'],
             'email'               => ['required', 'max:50', 'email'],
-            'phone'               => ['required', 'max:50'],
+            'phone'               => ['required', new MobileNumber()],
             'address'             => ['required', 'max:250'],
             'date_of_birth'       => ['required', 'date', 'before:today'],
             'national_id'         => ['required', 'max:50'],

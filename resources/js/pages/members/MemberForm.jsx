@@ -312,14 +312,33 @@ export default function MemberForm() {
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field id="phone" label="Mobile Number" error={errorFor('phone')} required={!isEdit}>
+                  <Field
+                    id="phone"
+                    label="Mobile Number"
+                    error={errorFor('phone')}
+                    hint="8 digits, no spaces. Must not already belong to another member."
+                    required={!isEdit}
+                  >
                     <Input
                       id="phone"
                       type="tel"
-                      inputMode="tel"
+                      inputMode="numeric"
+                      autoComplete="tel-national"
+                      maxLength={8}
                       value={form.phone}
-                      onChange={setInput('phone')}
-                      placeholder="Mobile Number (+230)"
+                      /*
+                       * Non-digits are dropped as they are typed and the value is
+                       * capped at 8, so the field cannot hold something the API
+                       * would reject. Paste goes through the same handler, which
+                       * is why a stray "+230 " or spaces cannot survive it.
+                       */
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          phone: event.target.value.replace(/\D/g, '').slice(0, 8),
+                        }))
+                      }
+                      placeholder="52528555"
                     />
                   </Field>
                   <Field

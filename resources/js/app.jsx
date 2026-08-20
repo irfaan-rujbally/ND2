@@ -8,7 +8,9 @@ import { Toaster } from 'sonner'
 // emit a real <link> tag instead of waiting on the JS bundle.
 
 import { AuthProvider, useAuth } from '@/auth/AuthProvider'
+import { MemberAuthProvider, useMemberAuth } from '@/auth/MemberAuthProvider'
 import { AppLayout } from '@/components/AppLayout'
+import { MemberLayout } from '@/components/MemberLayout'
 import { Spinner } from '@/components/common'
 import { ApiError } from '@/lib/api'
 
@@ -26,6 +28,10 @@ import MeetingForm from '@/pages/meetings/MeetingForm'
 import Attendance from '@/pages/meetings/Attendance'
 import UsersList from '@/pages/users/UsersList'
 import UserForm from '@/pages/users/UserForm'
+import CheckIn from '@/pages/member/CheckIn'
+import MyDetails from '@/pages/member/MyDetails'
+import MyMeetings from '@/pages/member/MyMeetings'
+import ChangePassword from '@/pages/member/ChangePassword'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -70,6 +76,19 @@ function RequireAdmin({ children }) {
   return children
 }
 
+/**
+ * Guards the member portal. Sends an unauthenticated visitor to /check-in rather
+ * than /login: that is the members' sign-in, and /login is the staff one.
+ */
+function RequireMember({ children }) {
+  const { isAuthenticated, isLoading } = useMemberAuth()
+
+  if (isLoading) return <FullPageSpinner />
+  if (!isAuthenticated) return <Navigate to="/check-in" replace />
+
+  return children
+}
+
 /** Keeps the old /attendance/{meeting} links working. */
 function LegacyAttendanceRedirect() {
   const { id } = useParams()
@@ -83,6 +102,29 @@ function App() {
 
       {/* Public: a member proves who they are and collects their own badge. */}
       <Route path="/badge" element={<PublicBadge />} />
+
+      {/*
+        Public because a member arriving at a meeting has no session yet. The
+        page itself signs them in before it will scan anything.
+      */}
+      <Route path="/check-in" element={<CheckIn />} />
+
+      {/*
+        The member portal. Separate from the staff tree below: members hold no
+        role, and the only records they may reach are their own.
+      */}
+      <Route
+        path="/my"
+        element={
+          <RequireMember>
+            <MemberLayout />
+          </RequireMember>
+        }
+      >
+        <Route index element={<MyDetails />} />
+        <Route path="meetings" element={<MyMeetings />} />
+        <Route path="password" element={<ChangePassword />} />
+      </Route>
 
       {/* Print view: deliberately outside AppLayout so no app chrome is printed. */}
       <Route
@@ -137,8 +179,10 @@ createRoot(document.getElementById('app')).render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          <App />
-          <Toaster position="top-center" richColors closeButton />
+          <MemberAuthProvider>
+            <App />
+            <Toaster position="top-center" richColors closeButton />
+          </MemberAuthProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

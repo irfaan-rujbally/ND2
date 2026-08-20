@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
  * What the operator is shown between one badge and the next. `result` is null
  * while the attach request is still in flight.
  */
-function ScanResult({ result, onContinue }) {
+function ScanResult({ result, onContinue, messages }) {
   const status = result?.status
 
   const tone =
@@ -24,14 +24,21 @@ function ScanResult({ result, onContinue }) {
 
   const Icon = status === 'added' ? Check : status === 'already' ? Info : status === 'failed' ? AlertTriangle : Loader2
 
-  const message =
-    status === 'added'
-      ? 'Recorded at this meeting.'
-      : status === 'already'
-        ? 'Member already scanned.'
-        : status === 'failed'
-          ? 'Not recorded.'
-          : 'Checking the badge…'
+  /*
+   * Defaults address the operator working the door. The member portal scans the
+   * same codes but the reader is the member themselves, so it passes its own
+   * wording rather than telling someone "member already scanned" about
+   * themselves.
+   */
+  const copy = {
+    added: 'Recorded at this meeting.',
+    already: 'Member already scanned.',
+    failed: 'Not recorded.',
+    pending: 'Checking the badge…',
+    ...messages,
+  }
+
+  const message = copy[status ?? 'pending'] ?? copy.pending
 
   return (
     <div className="space-y-3">
@@ -80,7 +87,15 @@ function cameraError(error) {
  * that pause a result flashed past before it could be read, and a badge left in
  * frame was scanned over and over.
  */
-export function QrScannerDialog({ open, onOpenChange, onToken, log = [], result = null, onContinue }) {
+export function QrScannerDialog({
+  open,
+  onOpenChange,
+  onToken,
+  log = [],
+  result = null,
+  onContinue,
+  messages,
+}) {
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
@@ -299,7 +314,7 @@ export function QrScannerDialog({ open, onOpenChange, onToken, log = [], result 
             </div>
 
             {paused ? (
-              <ScanResult result={result} onContinue={resume} />
+              <ScanResult result={result} onContinue={resume} messages={messages} />
             ) : (
               <p className="text-center text-xs text-muted-foreground">
                 {hint ?? 'Point the camera at a badge.'}

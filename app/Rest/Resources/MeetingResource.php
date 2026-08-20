@@ -17,6 +17,10 @@ class MeetingResource extends Resource
     {
         return [
             'id',
+            // The check-in code organisers display at the door. Readable, never
+            // writable: it is minted on create and rewriting it would invalidate
+            // a code already printed on a poster.
+            'qr_token',
             'title',
             'office_id',
             'date',

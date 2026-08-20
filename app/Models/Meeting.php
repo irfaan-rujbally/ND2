@@ -18,6 +18,44 @@ class Meeting extends Model
         'date' => 'date:Y-m-d',
     ];
 
+    /**
+     * Every meeting gets its check-in token the moment it is created, so the QR
+     * code can be printed or projected straight after saving. Mirrors how
+     * Member::booted assigns a badge token.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $meeting) {
+            if (blank($meeting->qr_token)) {
+                $meeting->qr_token = static::freshQrToken();
+            }
+        });
+
+        /*
+         * The token is write-once. Model::unguard() is global in this app, so
+         * without this an update carrying a qr_token would overwrite it -- and
+         * every code already printed on a poster or projected in a hall would
+         * stop working, with no way to tell which meeting they belonged to.
+         *
+         * Reverted rather than rejected: an edit form that round-trips the whole
+         * record should not fail because it echoed a field back unchanged.
+         */
+        static::updating(function (self $meeting) {
+            if ($meeting->isDirty('qr_token') && filled($meeting->getOriginal('qr_token'))) {
+                $meeting->qr_token = $meeting->getOriginal('qr_token');
+            }
+        });
+    }
+
+    public static function freshQrToken(): string
+    {
+        do {
+            $token = \Illuminate\Support\Str::random(32);
+        } while (static::withTrashed()->where('qr_token', $token)->exists());
+
+        return $token;
+    }
+
     public function scopeOrderByDate($query)
     {
         $query->orderBy('date');

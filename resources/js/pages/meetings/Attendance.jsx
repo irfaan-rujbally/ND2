@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState, ErrorState, Field, PageHeader, SearchInput, Spinner } from '@/components/common'
+import { MeetingCheckInCode } from '@/components/meeting-checkin-code'
 import { ScrollList } from '@/components/scroll-list'
 import { QrScannerDialog } from '@/components/qr-scanner'
 import { formatDate, fullName, humanizeValidationMessage } from '@/lib/utils'
@@ -305,6 +306,11 @@ export default function Attendance() {
             <Badge variant="secondary" className="self-center px-3 py-1 text-sm">
               {meeting?.members_count ?? 0} participant{meeting?.members_count === 1 ? '' : 's'}
             </Badge>
+            {/*
+              Members check themselves in by scanning this; the badge scanner
+              below stays for the door desk, since it needs no phone from them.
+            */}
+            <MeetingCheckInCode meeting={meeting} />
             <Button asChild variant="outline">
               <Link to={`/meetings/${id}/edit`}>
                 <Pencil className="size-4" />

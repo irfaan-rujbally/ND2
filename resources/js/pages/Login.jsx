@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, Navigate, useLocation } from 'react-router-dom'
-import { LogIn, QrCode } from 'lucide-react'
+import { LogIn, QrCode, ScanLine } from 'lucide-react'
 import { useAuth } from '@/auth/AuthProvider'
 import { ThreeBackground } from '@/components/ThreeBackground'
 import { Button } from '@/components/ui/button'
@@ -111,15 +111,25 @@ export default function Login() {
               </Button>
             </form>
 
-            {/* Members have no account: this is how they collect their badge. */}
-            <div className="mt-6 border-t pt-5">
+            {/*
+              This form is the staff sign-in. Members have their own, so the two
+              ways in for them are kept together below the divider: collect a
+              badge without signing in at all, or sign in to check into a meeting.
+            */}
+            <div className="mt-6 space-y-2 border-t pt-5">
               <p className="mb-2 text-center text-xs text-muted-foreground">
-                A member without an account?
+                Are you a member?
               </p>
               <Button asChild variant="outline" size="lg" className="w-full">
                 <Link to="/badge">
                   <QrCode className="size-4" />
                   Get QR code
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="lg" className="w-full">
+                <Link to="/check-in">
+                  <ScanLine className="size-4" />
+                  Check in to a meeting
                 </Link>
               </Button>
             </div>
