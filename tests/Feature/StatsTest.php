@@ -16,10 +16,11 @@ use Tests\TestCase;
  * The dashboard aggregates, and in particular that they count the same people
  * the meeting's own screens list.
  *
- * The two disagreed: 64 members have no office recorded, and every read through
- * MemberResource is scoped to the caller's office, so a participant with no
- * office was counted by the dashboard and then left out of the list -- one
- * meeting read "62 participants" on the dashboard and "61" when opened.
+ * The two disagreed once: every read through MemberResource is scoped to the
+ * caller's office, so a participant belonging to no office was counted by the
+ * dashboard and then left out of the meeting's list -- one meeting read "62
+ * participants" on the dashboard and "61" when opened. Both now count everyone
+ * recorded present, and MeetingParticipantsController lists them.
  */
 class StatsTest extends TestCase
 {
@@ -70,25 +71,10 @@ class StatsTest extends TestCase
     }
 
     /**
-     * A member with no office is invisible to every office-scoped screen, so
-     * counting them here would put a number on the dashboard that the meeting
-     * itself contradicts.
+     * Everyone present counts, whatever office they belong to -- the meeting's
+     * participants list shows them, so the dashboard has to agree with it.
      */
-    public function test_a_participant_with_no_office_is_not_counted(): void
-    {
-        $this->attach($this->member('Ashvin', $this->office->id));
-        $this->attach($this->member('Antish', null));
-
-        Sanctum::actingAs($this->admin);
-
-        $this->getJson('/api/stats')
-            ->assertOk()
-            ->assertJsonPath('data.recent_meetings.0.participants', 1)
-            ->assertJsonPath('data.total_attendances', 1);
-    }
-
-    /** Another office's members are not this office's participants either. */
-    public function test_a_participant_from_another_office_is_not_counted(): void
+    public function test_a_participant_from_another_office_is_counted(): void
     {
         $this->attach($this->member('Ashvin', $this->office->id));
         $this->attach($this->member('Elsewhere', Office::create(['name' => 'Port Louis'])->id));
@@ -97,7 +83,8 @@ class StatsTest extends TestCase
 
         $this->getJson('/api/stats')
             ->assertOk()
-            ->assertJsonPath('data.recent_meetings.0.participants', 1);
+            ->assertJsonPath('data.recent_meetings.0.participants', 2)
+            ->assertJsonPath('data.total_attendances', 2);
     }
 
     /** Detaching removes someone from the count: the pivot is soft deleted. */
