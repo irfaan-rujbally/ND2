@@ -97,6 +97,14 @@ class MemberExportTest extends TestCase
         $this->assertStringNotContainsString('Abdoullah', $body);
     }
 
+    /** The list can be sorted by its Attendance column, so the export must accept it. */
+    public function test_it_accepts_the_attendance_sort(): void
+    {
+        Sanctum::actingAs($this->admin);
+
+        $this->get('/api/members/export?sort=attendance&direction=desc')->assertOk();
+    }
+
     public function test_it_rejects_an_unknown_sort_column(): void
     {
         Sanctum::actingAs($this->admin);

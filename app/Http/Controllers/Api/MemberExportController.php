@@ -67,7 +67,10 @@ class MemberExportController extends Controller
         $validated = $request->validate([
             'search'       => ['nullable', 'string', 'max:100'],
             'constituency' => ['nullable', 'integer', 'between:1,21'],
-            'sort'         => ['nullable', 'string', 'in:first_name,last_name,email,phone,constituency'],
+            // 'attendance' is not a column: it is the meetings count, which is
+            // what the list's Attendance column sorts by. Kept in step with the
+            // sortable headings in MembersList.jsx.
+            'sort'         => ['nullable', 'string', 'in:first_name,last_name,email,phone,constituency,attendance'],
             'direction'    => ['nullable', 'string', 'in:asc,desc'],
         ]);
 
@@ -83,7 +86,11 @@ class MemberExportController extends Controller
             ])
             ->with('office')
             ->withCount('meetings')
-            ->orderBy($validated['sort'] ?? 'first_name', $validated['direction'] ?? 'asc')
+            ->when(
+                ($validated['sort'] ?? null) === 'attendance',
+                fn ($q) => $q->orderByMeetingsCount($validated['direction'] ?? 'asc'),
+                fn ($q) => $q->orderBy($validated['sort'] ?? 'first_name', $validated['direction'] ?? 'asc'),
+            )
             ->get();
 
         $rows = $members->map(

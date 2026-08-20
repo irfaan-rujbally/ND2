@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
-import { CalendarPlus, ChevronRight, Pencil, Plus } from 'lucide-react'
+import { CalendarPlus, ChevronRight, Pencil, Plus, Users } from 'lucide-react'
 import { search } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -17,7 +17,7 @@ import {
   SortableHead,
   TableSkeleton,
 } from '@/components/common'
-import { formatDate } from '@/lib/utils'
+import { formatDate, formatTimeRange } from '@/lib/utils'
 
 const PER_PAGE = 10
 
@@ -146,7 +146,7 @@ export default function MeetingsList() {
                   </TableHead>
                   <TableHead>Topic</TableHead>
                   <TableHead>Participants</TableHead>
-                  <TableHead className="w-24 text-right">Actions</TableHead>
+                  <TableHead className="w-32 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -161,13 +161,28 @@ export default function MeetingsList() {
                       </Link>
                     </TableCell>
                     <TableCell className="text-muted-foreground">{meeting.office?.name || '-'}</TableCell>
-                    <TableCell className="whitespace-nowrap tabular-nums">{formatDate(meeting.date)}</TableCell>
+                    <TableCell className="whitespace-nowrap tabular-nums">
+                      {formatDate(meeting.date)}
+                      {/* Times are optional, so the date stands alone where none were recorded. */}
+                      {formatTimeRange(meeting.start_time, meeting.end_time) ? (
+                        <span className="block text-xs text-muted-foreground">
+                          {formatTimeRange(meeting.start_time, meeting.end_time)}
+                        </span>
+                      ) : null}
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{meeting.topic || '-'}</TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{meeting.members_count ?? 0}</Badge>
+                      <Link to={`/meetings/${meeting.id}/participants`}>
+                        <Badge variant="secondary">{meeting.members_count ?? 0}</Badge>
+                      </Link>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
+                        <Button asChild variant="ghost" size="icon" aria-label="View participants">
+                          <Link to={`/meetings/${meeting.id}/participants`}>
+                            <Users className="size-4" />
+                          </Link>
+                        </Button>
                         <Button asChild variant="ghost" size="icon" aria-label="Edit meeting">
                           <Link to={`/meetings/${meeting.id}/edit`}>
                             <Pencil className="size-4" />
@@ -202,11 +217,20 @@ export default function MeetingsList() {
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {formatDate(meeting.date)}
+                    {formatTimeRange(meeting.start_time, meeting.end_time)
+                      ? ` · ${formatTimeRange(meeting.start_time, meeting.end_time)}`
+                      : ''}
                     {meeting.topic ? ` · ${meeting.topic}` : ''}
                   </p>
                   <div className="mt-3 flex gap-2">
                     <Button asChild variant="outline" size="sm" className="flex-1">
                       <Link to={`/meetings/${meeting.id}/attendance`}>Attendance</Link>
+                    </Button>
+                    <Button asChild variant="ghost" size="sm">
+                      <Link to={`/meetings/${meeting.id}/participants`}>
+                        <Users className="size-4" />
+                        Participants
+                      </Link>
                     </Button>
                     <Button asChild variant="ghost" size="sm">
                       <Link to={`/meetings/${meeting.id}/edit`}>

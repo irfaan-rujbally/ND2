@@ -20,7 +20,7 @@ import { EmptyState, ErrorState, Field, PageHeader, SearchInput, Spinner } from 
 import { MeetingCheckInCode } from '@/components/meeting-checkin-code'
 import { ScrollList } from '@/components/scroll-list'
 import { QrScannerDialog } from '@/components/qr-scanner'
-import { formatDate, fullName, humanizeValidationMessage } from '@/lib/utils'
+import { formatDate, formatTimeRange, fullName, humanizeValidationMessage } from '@/lib/utils'
 
 const PAGE_SIZE = 100
 
@@ -362,7 +362,12 @@ export default function Attendance() {
         ) : (
           <PageHeader
             title={meeting?.title || 'Untitled meeting'}
-            description={[formatDate(meeting?.date), meeting?.office?.name, meeting?.topic]
+            description={[
+              formatDate(meeting?.date),
+              formatTimeRange(meeting?.start_time, meeting?.end_time),
+              meeting?.office?.name,
+              meeting?.topic,
+            ]
               .filter(Boolean)
               .join(' · ')}
           >

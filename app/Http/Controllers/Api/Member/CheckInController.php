@@ -106,9 +106,12 @@ class CheckInController extends Controller
     private function meetingPayload(Meeting $meeting): array
     {
         return [
-            'id'    => $meeting->id,
-            'title' => $meeting->title,
-            'date'  => $meeting->date?->toDateString(),
+            'id'         => $meeting->id,
+            'title'      => $meeting->title,
+            'date'       => $meeting->date?->toDateString(),
+            // Confirms they scanned the right session, not yesterday's poster.
+            'start_time' => $meeting->start_time,
+            'end_time'   => $meeting->end_time,
         ];
     }
 }

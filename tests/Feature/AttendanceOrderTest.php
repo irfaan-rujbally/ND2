@@ -95,6 +95,77 @@ class AttendanceOrderTest extends TestCase
         $this->assertSame(['Alpha'], $this->participantNames());
     }
 
+    /**
+     * The members list's Attendance column sorts through the same kind of scope.
+     * The percentage shares a denominator across every row, so ordering by the
+     * meetings count is ordering by the percentage.
+     */
+    public function test_members_can_be_ordered_by_how_many_meetings_they_attended(): void
+    {
+        $this->threeMembersWithTwoOneAndNoMeetings();
+
+        $this->assertSame(['Bravo', 'Charlie', 'Alpha'], $this->namesOrderedByAttendance('desc'));
+    }
+
+    /*
+     * One request per test: Lomkit registers SearchRequest as a container
+     * singleton, and a feature test reuses one container across requests, so a
+     * second search in the same test would be answered with the first one's
+     * parameters. A browser gets a fresh container per request.
+     */
+    public function test_ordering_by_attendance_can_be_reversed(): void
+    {
+        $this->threeMembersWithTwoOneAndNoMeetings();
+
+        $this->assertSame(['Alpha', 'Charlie', 'Bravo'], $this->namesOrderedByAttendance('asc'));
+    }
+
+    /**
+     * Detaching drops a member back down the list: the pivot is soft deleted, so
+     * the count must not include rows the attendance panel no longer shows.
+     */
+    public function test_ordering_by_attendance_ignores_detached_members(): void
+    {
+        ['two' => $two] = $this->threeMembersWithTwoOneAndNoMeetings();
+
+        MeetingHasMember::where('member_id', $two->id)->get()->each->delete();
+
+        $this->assertSame(['Charlie', 'Alpha', 'Bravo'], $this->namesOrderedByAttendance('desc'));
+    }
+
+    /** @return array{two: Member, one: Member, none: Member} */
+    private function threeMembersWithTwoOneAndNoMeetings(): array
+    {
+        $second = $this->meeting('Second');
+
+        // Alphabetical order is deliberately not attendance order.
+        $none = $this->member('Alpha');
+        $two = $this->member('Bravo');
+        $one = $this->member('Charlie');
+
+        $this->attach($two, '2025-08-12 09:00:00');
+        $this->attach($two, '2025-08-12 09:00:00', $second);
+        $this->attach($one, '2025-08-12 09:00:00');
+
+        return ['two' => $two, 'one' => $one, 'none' => $none];
+    }
+
+    /** @return list<string> */
+    private function namesOrderedByAttendance(string $direction): array
+    {
+        Sanctum::actingAs($this->admin);
+
+        $response = $this->postJson('/api/members/search', [
+            'search' => [
+                'scopes' => [['name' => 'orderByMeetingsCount', 'parameters' => [$direction]]],
+            ],
+        ]);
+
+        $response->assertOk();
+
+        return array_column($response->json('data'), 'first_name');
+    }
+
     /** @return list<string> */
     private function participantNames(): array
     {
@@ -123,10 +194,21 @@ class AttendanceOrderTest extends TestCase
         return $member;
     }
 
-    private function attach(Member $member, string $at): MeetingHasMember
+    private function meeting(string $title): Meeting
+    {
+        $meeting = new Meeting();
+        $meeting->title = $title;
+        $meeting->office_id = $this->office->id;
+        $meeting->date = '2025-08-19';
+        $meeting->save();
+
+        return $meeting;
+    }
+
+    private function attach(Member $member, string $at, ?Meeting $meeting = null): MeetingHasMember
     {
         $pivot = new MeetingHasMember();
-        $pivot->meeting_id = $this->meeting->id;
+        $pivot->meeting_id = ($meeting ?? $this->meeting)->id;
         $pivot->member_id = $member->id;
         $pivot->forceFill(['created_at' => $at, 'updated_at' => $at])->save();
 

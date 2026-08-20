@@ -20,7 +20,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Field, Spinner } from '@/components/common'
 import { OrbitBorder } from '@/components/orbit-border'
-import { cn, formatDate } from '@/lib/utils'
+import { cn, formatDate, formatTimeRange } from '@/lib/utils'
 
 /**
  * Self service check-in.
@@ -267,7 +267,11 @@ export default function CheckIn() {
               ? 'You were already checked in — nothing changed.'
               : 'You are checked in.'}
           </p>
-          <p className="text-xs text-muted-foreground">{formatDate(checkedIn.date)}</p>
+          <p className="text-xs text-muted-foreground">
+            {[formatDate(checkedIn.date), formatTimeRange(checkedIn.start_time, checkedIn.end_time)]
+              .filter(Boolean)
+              .join(' · ')}
+          </p>
         </div>
       )}
 

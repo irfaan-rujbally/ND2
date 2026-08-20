@@ -96,15 +96,7 @@ function NewsCard({ post }) {
  * is here so both can be compared before settling on one.
  */
 function EmbeddedTimeline() {
-  return (
-    <div className="space-y-4">
-      <FacebookPagePlugin height={720} />
-      <p className="text-xs text-muted-foreground">
-        The timeline is rendered by Facebook inside an iframe: it always shows their styling, needs no page access token,
-        and is hidden entirely when a browser blocks facebook.com.
-      </p>
-    </div>
-  )
+  return <FacebookPagePlugin height={720} />
 }
 
 function ViewToggle({ view, onChange }) {

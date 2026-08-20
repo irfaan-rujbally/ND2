@@ -18,10 +18,10 @@ import {
 } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState, Field, PageHeader, Spinner } from '@/components/common'
-import { toDateInput, humanizeValidationMessage } from '@/lib/utils'
+import { toDateInput, toTimeInput, humanizeValidationMessage } from '@/lib/utils'
 import { useAuth } from '@/auth/AuthProvider'
 
-const EMPTY = { title: '', date: '', topic: '', attachment_path: '', office_id: '' }
+const EMPTY = { title: '', date: '', start_time: '', end_time: '', topic: '', attachment_path: '', office_id: '' }
 
 export default function MeetingForm() {
   const { id } = useParams()
@@ -66,6 +66,8 @@ export default function MeetingForm() {
       setForm({
         title: meeting.title ?? '',
         date: toDateInput(meeting.date),
+        start_time: toTimeInput(meeting.start_time),
+        end_time: toTimeInput(meeting.end_time),
         topic: meeting.topic ?? '',
         attachment_path: meeting.attachment_path ?? '',
         office_id: meeting.office_id != null ? String(meeting.office_id) : '',
@@ -79,6 +81,8 @@ export default function MeetingForm() {
       const attributes = {
         title: form.title,
         date: form.date || null,
+        start_time: form.start_time || null,
+        end_time: form.end_time || null,
         topic: form.topic || null,
         attachment_path: form.attachment_path || null,
         office_id: form.office_id ? Number(form.office_id) : null,
@@ -165,7 +169,7 @@ export default function MeetingForm() {
         <CardContent>
           {loading ? (
             <div className="space-y-4">
-              {Array.from({ length: 5 }).map((_, index) => (
+              {Array.from({ length: 7 }).map((_, index) => (
                 <Skeleton key={index} className="h-11" />
               ))}
             </div>
@@ -195,6 +199,27 @@ export default function MeetingForm() {
                       ))}
                     </SelectContent>
                   </Select>
+                </Field>
+              </div>
+
+              {/* Optional: the meetings imported before these columns existed have
+                  no times, and a meeting can be scheduled before its hours are known. */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field id="start_time" label="Start time" error={errorFor('start_time')}>
+                  <Input
+                    id="start_time"
+                    type="time"
+                    value={form.start_time}
+                    onChange={update('start_time')}
+                  />
+                </Field>
+                <Field
+                  id="end_time"
+                  label="End time"
+                  error={errorFor('end_time')}
+                  hint="Must be later than the start time."
+                >
+                  <Input id="end_time" type="time" value={form.end_time} onChange={update('end_time')} />
                 </Field>
               </div>
 

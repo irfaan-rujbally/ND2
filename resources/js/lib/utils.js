@@ -19,6 +19,35 @@ export function toDateInput(value) {
   return String(value).slice(0, 10)
 }
 
+/** Turns a "HH:MM" or "HH:MM:SS" time column into the value an <input type="time"> expects. */
+export function toTimeInput(value) {
+  if (!value) return ''
+  return String(value).slice(0, 5)
+}
+
+/**
+ * A meeting's time of day, without inventing a date for it. Times arrive from a
+ * TIME column as "19:30:00", which is already how they should read once the
+ * seconds are dropped, so this stays a string operation rather than going
+ * through Date -- constructing a Date would need a day to attach the time to.
+ */
+export function formatTime(value) {
+  const time = toTimeInput(value)
+  return time || null
+}
+
+/**
+ * The time span of a meeting: "19:30 – 21:00", or just the start where no end
+ * was recorded. Null when there are no times at all, so callers can fall back to
+ * showing the date alone.
+ */
+export function formatTimeRange(start, end) {
+  const from = formatTime(start)
+  const to = formatTime(end)
+  if (!from) return to ? `until ${to}` : null
+  return to ? `${from} – ${to}` : from
+}
+
 export function initials(first, last) {
   return `${(first || '').charAt(0)}${(last || '').charAt(0)}`.toUpperCase() || '?'
 }

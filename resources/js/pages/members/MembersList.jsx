@@ -32,6 +32,12 @@ import { downloadBlob, fullName } from '@/lib/utils'
 
 const PER_PAGE = 10
 
+/*
+ * The Attendance column's sort key. Not a database column, so both the list and
+ * the export translate it into an ordering by meetings attended.
+ */
+const ATTENDANCE_SORT = 'attendance'
+
 /** Attendance is derived the same way the old members screen derived it. */
 function attendanceRate(meetingsCount, totalMeetings) {
   if (!totalMeetings) return 0
@@ -113,9 +119,19 @@ export default function MembersList() {
       filters.push({ field: 'constituency', operator: '=', value: Number(constituency) })
     }
 
+    /*
+     * Attendance is not a column -- it is the meetings count over a denominator
+     * shared by every row -- so ordering by it goes through the resource's
+     * orderByMeetingsCount scope. A `sorts` entry naming it would be rejected as
+     * an unknown field.
+     */
+    const ordering = sort === ATTENDANCE_SORT
+      ? { scopes: [{ name: 'orderByMeetingsCount', parameters: [direction] }] }
+      : { sorts: [{ field: sort, direction }] }
+
     return {
       filters,
-      sorts: [{ field: sort, direction }],
+      ...ordering,
       includes: [{ relation: 'office' }],
       aggregates: [{ relation: 'meetings', type: 'count' }],
       page,
@@ -261,7 +277,11 @@ export default function MembersList() {
                       Constituency
                     </SortableHead>
                   </TableHead>
-                  <TableHead>Attendance</TableHead>
+                  <TableHead>
+                    <SortableHead field={ATTENDANCE_SORT} sort={sort} direction={direction} onSort={onSort}>
+                      Attendance
+                    </SortableHead>
+                  </TableHead>
                   <TableHead className="w-32 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>

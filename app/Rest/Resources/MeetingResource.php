@@ -24,6 +24,8 @@ class MeetingResource extends Resource
             'title',
             'office_id',
             'date',
+            'start_time',
+            'end_time',
             'topic',
             'attachment_path',
             'created_at',
@@ -76,6 +78,14 @@ class MeetingResource extends Resource
             'office_id'       => ['required', 'exists:offices,id'],
             'topic'           => ['nullable', 'max:50'],
             'date'            => ['nullable', 'date'],
+            /*
+             * TIME columns, so a time of day and nothing else. Both formats are
+             * accepted because an <input type="time"> submits "19:30" while a
+             * record read back from MySQL carries "19:30:00", and an edit form
+             * that round-trips the value unchanged must not fail validation.
+             */
+            'start_time'      => ['nullable', 'date_format:H:i,H:i:s'],
+            'end_time'        => ['nullable', 'date_format:H:i,H:i:s', 'after:start_time'],
         ];
     }
 

@@ -16,6 +16,13 @@ class Meeting extends Model
 
     protected $casts = [
         'date' => 'date:Y-m-d',
+        /*
+         * Left as plain strings: these are TIME columns, a time of day with no
+         * date attached, and casting them to a Carbon instance would pin them to
+         * an arbitrary day. Formatted for display by formatTime() in the UI.
+         */
+        'start_time' => 'string',
+        'end_time'   => 'string',
     ];
 
     /**

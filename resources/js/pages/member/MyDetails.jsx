@@ -110,7 +110,7 @@ export default function MyDetails() {
               sits flush against the card's top border on any screen >= 640px.
         */}
         <CardContent className="space-y-4 p-5 sm:p-6">
-          <div>
+          <div className="text-center sm:text-left">
             <h2 className="font-semibold">My QR code</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Show this at the door, or scan the meeting code yourself to check in.
@@ -121,7 +121,7 @@ export default function MyDetails() {
             <div className="rounded-xl bg-white p-4 shadow-sm">
               <QrImage token={profile.qr_token} width={150} />
             </div>
-            <div className="space-y-2">
+            <div className="flex flex-col items-center gap-2 text-center sm:items-start sm:text-left">
               <Button onClick={download} disabled={downloading}>
                 {downloading ? <Spinner /> : <Download className="size-4" />}
                 Download my QR code

@@ -171,6 +171,31 @@ class Member extends Model implements AuthenticatableContract
             ->orderBy((clone $pivot)->select('meeting_has_member.id'), $direction);
     }
 
+    /**
+     * Ordering by how many meetings a member attended.
+     *
+     * Sorting the members list by its Attendance column comes through here
+     * rather than through a `sorts` entry: the percentage is not a column, it is
+     * the meetings count over a denominator shared by every row, so ordering by
+     * the count orders by the percentage.
+     *
+     * A correlated subquery for the same reason scopeOrderByAttendanceAddedAt
+     * uses one -- the pivot has no unique index, so a join could count a member
+     * twice. Name is the tie-break, so members on 0% keep a stable order.
+     */
+    public function scopeOrderByMeetingsCount($query, string $direction = 'desc')
+    {
+        $count = MeetingHasMember::query()
+            ->selectRaw('count(*)')
+            ->whereColumn('meeting_has_member.member_id', 'members.id');
+
+        return $query
+            ->reorder()  // Drops the resource's default name ordering.
+            ->orderBy($count, $direction)
+            ->orderBy('members.first_name')
+            ->orderBy('members.id');
+    }
+
     public function office(): BelongsTo
     {
         return $this->belongsTo(Office::class);

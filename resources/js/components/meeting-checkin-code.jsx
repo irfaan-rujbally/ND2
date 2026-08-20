@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Spinner } from '@/components/common'
 import { downloadQrPng } from '@/lib/qr'
-import { formatDate } from '@/lib/utils'
+import { formatDate, formatTimeRange } from '@/lib/utils'
 
 /**
  * The meeting's check-in code, for organisers to project or print.
@@ -50,7 +50,11 @@ export function MeetingCheckInCode({ meeting }) {
           <div className="space-y-4 text-center">
             <div>
               <p className="font-medium">{meeting.title}</p>
-              <p className="text-sm text-muted-foreground">{formatDate(meeting.date)}</p>
+              <p className="text-sm text-muted-foreground">
+                {[formatDate(meeting.date), formatTimeRange(meeting.start_time, meeting.end_time)]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </p>
             </div>
 
             <div className="flex justify-center">

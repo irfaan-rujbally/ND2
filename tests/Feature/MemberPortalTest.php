@@ -525,6 +525,72 @@ class MemberPortalTest extends TestCase
         $this->assertEquals(100, $response->json('meta.attendance_rate'));
     }
 
+    /** Members need the hours, not just the day, to know when to turn up. */
+    public function test_the_next_meeting_carries_its_start_and_end_times(): void
+    {
+        $token = $this->signIn();
+
+        $this->meeting([
+            'title'      => 'Tomorrow',
+            'date'       => now()->addDay()->toDateString(),
+            // Seconds included: MySQL normalises a TIME to H:i:s while the
+            // SQLite database these tests run on stores the string as given, so
+            // only a value already in the column's own format matches on both.
+            'start_time' => '19:30:00',
+            'end_time'   => '21:00:00',
+        ]);
+
+        $this->getJson('/api/member/meetings', $this->auth($token))
+            ->assertOk()
+            ->assertJsonPath('meta.next_meeting.start_time', '19:30:00')
+            ->assertJsonPath('meta.next_meeting.end_time', '21:00:00');
+    }
+
+    public function test_it_reports_the_next_upcoming_meeting(): void
+    {
+        $token = $this->signIn();
+
+        $this->meeting(['title' => 'Last week']);
+        $this->meeting(['title' => 'Next month', 'date' => now()->addMonth()->toDateString()]);
+        $this->meeting(['title' => 'Next week', 'date' => now()->addWeek()->toDateString()]);
+
+        $this->getJson('/api/member/meetings', $this->auth($token))
+            ->assertOk()
+            ->assertJsonPath('meta.next_meeting.title', 'Next week')
+            ->assertJsonPath('meta.next_meeting.office', $this->office->name)
+            ->assertJsonPath('meta.next_meeting.checked_in', false);
+    }
+
+    /** The member is sent to their own hall, not another office's. */
+    public function test_the_next_meeting_ignores_other_offices(): void
+    {
+        $token = $this->signIn();
+
+        $this->meeting([
+            'title'     => 'Theirs',
+            'date'      => now()->addDay()->toDateString(),
+            'office_id' => Office::create(['name' => 'Port Louis'])->id,
+        ]);
+
+        $this->getJson('/api/member/meetings', $this->auth($token))
+            ->assertOk()
+            ->assertJsonPath('meta.next_meeting', null);
+    }
+
+    /** Checking in early must not leave the card inviting a second check-in. */
+    public function test_the_next_meeting_says_when_it_is_already_checked_in(): void
+    {
+        $token = $this->signIn();
+
+        $upcoming = $this->meeting(['title' => 'Tomorrow', 'date' => now()->addDay()->toDateString()]);
+        MeetingHasMember::create(['meeting_id' => $upcoming->id, 'member_id' => $this->member->id]);
+
+        $this->getJson('/api/member/meetings', $this->auth($token))
+            ->assertOk()
+            ->assertJsonPath('meta.next_meeting.title', 'Tomorrow')
+            ->assertJsonPath('meta.next_meeting.checked_in', true);
+    }
+
     public function test_a_member_never_sees_another_members_attendance(): void
     {
         $token = $this->signIn();

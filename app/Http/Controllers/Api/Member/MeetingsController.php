@@ -35,12 +35,29 @@ class MeetingsController extends Controller
 
         $attended = $member->meetings()
             ->orderByDesc('date')
-            ->get(['meetings.id', 'meetings.title', 'meetings.date', 'meetings.office_id']);
+            ->get([
+                'meetings.id', 'meetings.title', 'meetings.date',
+                'meetings.start_time', 'meetings.end_time', 'meetings.office_id',
+            ]);
 
         $eligible = Meeting::query()
             ->whereDate('date', '<=', now())
             ->when($member->office_id !== null, fn ($q) => $q->where('office_id', $member->office_id))
             ->count();
+
+        /*
+         * The soonest meeting still to come, scoped the same way as eligibility
+         * above -- a member cannot attend another office's meeting, so showing
+         * one would only send them to the wrong hall. Today counts as upcoming:
+         * `date` has no time component, so a meeting dated today may not have
+         * started yet, and it is exactly the one they need to check in to.
+         */
+        $next = Meeting::query()
+            ->with('office:id,name')
+            ->whereDate('date', '>=', now())
+            ->when($member->office_id !== null, fn ($q) => $q->where('office_id', $member->office_id))
+            ->orderBy('date')
+            ->first();
 
         /*
          * Only attendances that count towards the denominator are counted in the
@@ -59,6 +76,8 @@ class MeetingsController extends Controller
                 'id'            => $m->id,
                 'title'         => $m->title,
                 'date'          => $m->date?->toDateString(),
+                'start_time'    => $m->start_time,
+                'end_time'      => $m->end_time,
                 'checked_in_at' => $m->pivot?->created_at?->toIso8601String(),
             ])->values()->all(),
             'meta' => [
@@ -69,6 +88,18 @@ class MeetingsController extends Controller
                     : null,
                 // Lets the UI say "of your office's meetings" or add a caveat.
                 'scope' => $member->office_id !== null ? 'office' : 'all',
+                'next_meeting' => $next === null ? null : [
+                    'id'         => $next->id,
+                    'title'      => $next->title,
+                    'date'       => $next->date?->toDateString(),
+                    'start_time' => $next->start_time,
+                    'end_time'   => $next->end_time,
+                    'topic'      => $next->topic,
+                    'office'     => $next->office?->name,
+                    // Members can check in early, so the card must not invite a
+                    // second check-in for a meeting already recorded.
+                    'checked_in' => $attended->contains('id', $next->id),
+                ],
             ],
         ]);
     }

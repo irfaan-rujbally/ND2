@@ -26,6 +26,7 @@ import BadgeSheet from '@/pages/members/BadgeSheet'
 import MeetingsList from '@/pages/meetings/MeetingsList'
 import MeetingForm from '@/pages/meetings/MeetingForm'
 import Attendance from '@/pages/meetings/Attendance'
+import Participants from '@/pages/meetings/Participants'
 import UsersList from '@/pages/users/UsersList'
 import UserForm from '@/pages/users/UserForm'
 import CheckIn from '@/pages/member/CheckIn'
@@ -152,6 +153,7 @@ function App() {
           <Route path="create" element={<RequireAdmin><MeetingForm /></RequireAdmin>} />
           <Route path=":id/edit" element={<RequireAdmin><MeetingForm /></RequireAdmin>} />
           <Route path=":id/attendance" element={<RequireAdmin><Attendance /></RequireAdmin>} />
+          <Route path=":id/participants" element={<RequireAdmin><Participants /></RequireAdmin>} />
         </Route>
 
         <Route path="members">

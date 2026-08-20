@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
-import { CalendarCheck, ScanLine } from 'lucide-react'
+import { CalendarCheck, CalendarClock, ScanLine } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { memberApi } from '@/lib/memberApi'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyState, ErrorState, Spinner } from '@/components/common'
-import { formatDate } from '@/lib/utils'
+import { formatDate, formatTimeRange } from '@/lib/utils'
 
 /**
  * The meetings this member attended, and their attendance rate.
@@ -35,9 +35,45 @@ export default function MyMeetings() {
   const meetings = data?.data ?? []
   const meta = data?.meta ?? {}
   const rate = meta.attendance_rate
+  const next = meta.next_meeting
 
   return (
     <div className="space-y-4">
+      {next && (
+        <Card>
+          <CardContent className="p-5 sm:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <CalendarClock className="size-4" />
+                  Next meeting
+                </p>
+                <p className="mt-1 truncate font-semibold">{next.title}</p>
+                <p className="text-sm text-muted-foreground">
+                  {/* Times are optional: older meetings carry a date alone. */}
+                  {[formatDate(next.date), formatTimeRange(next.start_time, next.end_time), next.office]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </p>
+                {next.topic && (
+                  <p className="mt-1 text-sm text-muted-foreground">{next.topic}</p>
+                )}
+              </div>
+              {next.checked_in ? (
+                <p className="text-sm text-muted-foreground">Already checked in.</p>
+              ) : (
+                <Button asChild>
+                  <Link to="/check-in">
+                    <ScanLine className="size-4" />
+                    Check in
+                  </Link>
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardContent className="p-5 sm:p-6">
           <div className="flex flex-wrap items-end gap-6">
@@ -90,7 +126,11 @@ export default function MyMeetings() {
               {meetings.map((meeting) => (
                 <li key={meeting.id} className="px-5 py-3">
                   <p className="truncate font-medium">{meeting.title}</p>
-                  <p className="text-xs text-muted-foreground">{formatDate(meeting.date)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {[formatDate(meeting.date), formatTimeRange(meeting.start_time, meeting.end_time)]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </p>
                 </li>
               ))}
             </ul>
