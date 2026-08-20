@@ -61,7 +61,6 @@ export default function MeetingsList() {
       filters,
       sorts: [{ field: sort, direction }],
       includes: [{ relation: 'office' }],
-      aggregates: [{ relation: 'members', type: 'count' }],
       page,
       limit: PER_PAGE,
     }
@@ -173,7 +172,7 @@ export default function MeetingsList() {
                     <TableCell className="text-muted-foreground">{meeting.topic || '-'}</TableCell>
                     <TableCell>
                       <Link to={`/meetings/${meeting.id}/participants`}>
-                        <Badge variant="secondary">{meeting.members_count ?? 0}</Badge>
+                        <Badge variant="secondary">{meeting.participants_count ?? 0}</Badge>
                       </Link>
                     </TableCell>
                     <TableCell className="text-right">
@@ -213,7 +212,7 @@ export default function MeetingsList() {
                     >
                       {meeting.title || 'Untitled meeting'}
                     </Link>
-                    <Badge variant="secondary">{meeting.members_count ?? 0}</Badge>
+                    <Badge variant="secondary">{meeting.participants_count ?? 0}</Badge>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {formatDate(meeting.date)}

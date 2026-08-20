@@ -24,6 +24,14 @@ class MeetingResource extends Resource
             'title',
             'office_id',
             'date',
+            /*
+             * Attendees of any office. The `members` count aggregate cannot be
+             * used for this: Lomkit runs the aggregate through MemberResource,
+             * whose searchQuery is scoped to the caller's office, so a visitor
+             * from another office went uncounted while the participants list
+             * showed them. Added to the query by searchQuery below.
+             */
+            'participants_count',
             'start_time',
             'end_time',
             'topic',
@@ -91,7 +99,10 @@ class MeetingResource extends Resource
 
     public function searchQuery(RestRequest $request, Builder $query): Builder
     {
-        return $query->where('meetings.office_id', $request->user()->office_id);
+        // The relation already excludes detached (soft deleted) pivot rows.
+        return $query
+            ->withCount('members as participants_count')
+            ->where('meetings.office_id', $request->user()->office_id);
     }
 
     public function mutateQuery(RestRequest $request, Builder $query): Builder

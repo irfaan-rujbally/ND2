@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\MemberDocumentController;
+use App\Http\Controllers\Api\MeetingParticipantsController;
 use App\Http\Controllers\Api\MemberExportController;
 use App\Http\Controllers\Api\PublicBadgeController;
 use App\Http\Controllers\Api\Member\AuthController as MemberAuthController;
@@ -104,6 +105,14 @@ Route::middleware(['auth:sanctum', 'staff.only'])->group(function () {
 
     Rest::resource('members', \App\Rest\Controllers\MembersController::class)
         ->withSoftDeletes();
+
+    /*
+     * Registered before the resource so 'participants' is not read as a meeting
+     * key. Outside the resource because it deliberately returns members of any
+     * office -- see MeetingParticipantsController.
+     */
+    Route::get('meetings/{meeting}/participants', MeetingParticipantsController::class)
+        ->name('api.meetings.participants');
 
     Rest::resource('meetings', \App\Rest\Controllers\MeetingsController::class)
         ->withSoftDeletes();

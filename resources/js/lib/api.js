@@ -128,6 +128,25 @@ export function runAction(resource, action, { filters = [], fields = {} } = {}) 
 }
 
 /**
+ * Everyone recorded at one meeting, whatever office they belong to.
+ *
+ * Not a `search('members', ...)`: that is scoped to the caller's own office, so
+ * a visitor from another office would be missing from the very list they belong
+ * on. See MeetingParticipantsController.
+ */
+export function fetchMeetingParticipants(meetingId, filters = {}) {
+  const query = new URLSearchParams()
+
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== '' && value !== null && value !== undefined) query.set(key, String(value))
+  })
+
+  const suffix = query.toString() ? `?${query.toString()}` : ''
+
+  return api.get(`/meetings/${meetingId}/participants${suffix}`)
+}
+
+/**
  * Multipart upload for the membership application's attachments. Returns the
  * stored path, which is then saved on the member through a normal `mutate`.
  * `kind` is 'cv' or 'documents'.

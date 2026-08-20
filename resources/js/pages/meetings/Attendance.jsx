@@ -3,7 +3,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Check, Pencil, Plus, ScanLine, UserMinus, UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
-import { runAction, search } from '@/lib/api'
+import { fetchMeetingParticipants, runAction, search } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -113,7 +113,6 @@ export default function Attendance() {
       search('meetings', {
         filters: [{ field: 'id', operator: '=', value: meetingId }],
         includes: [{ relation: 'office' }],
-        aggregates: [{ relation: 'members', type: 'count' }],
         limit: 10,
       }).then((response) => response.data[0] ?? null),
 
@@ -129,21 +128,23 @@ export default function Attendance() {
   })
 
   /*
-   * Most recently recorded first, so whoever was just scanned in lands at the
-   * top of the panel where it can be confirmed at a glance. The ordering lives
-   * in a scope because it sorts on the pivot's timestamps, which are not fields
-   * of the member resource; `sorts` is left out so the resource's default name
-   * ordering does not win (the scope reorders).
+   * The meeting's own participants endpoint, not a member search: a member from
+   * another office who was recorded here belongs on this panel, and the members
+   * search only ever answers with the caller's own office -- so they would be
+   * impossible to see, or to remove, from the one screen that manages them.
+   *
+   * It answers most recently recorded first, so whoever was just scanned lands at
+   * the top where it can be confirmed at a glance.
    */
-  const participantsPayload = useMemo(
-    () => ({
-      filters: [{ field: 'meetings.id', operator: '=', value: meetingId }],
-      scopes: [{ name: 'orderByAttendanceAddedAt', parameters: [meetingId] }],
-    }),
-    [meetingId],
-  )
-
-  const participantsQuery = usePagedMembers(['attendance', meetingId], participantsPayload, LIVE)
+  const participantsQuery = useInfiniteQuery({
+    queryKey: ['attendance', meetingId],
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) =>
+      fetchMeetingParticipants(meetingId, { page: pageParam, limit: PAGE_SIZE }),
+    getNextPageParam: (lastPage) =>
+      lastPage.meta.current_page < lastPage.meta.last_page ? lastPage.meta.current_page + 1 : undefined,
+    ...LIVE,
+  })
 
   /*
    * Every member of the office is offered, not just the first page: the panel
@@ -196,7 +197,7 @@ export default function Attendance() {
    * change, and cheaper than polling three paginated queries forever.
    */
   const knownCountRef = useRef(null)
-  const liveCount = meetingQuery.data?.members_count ?? null
+  const liveCount = meetingQuery.data?.participants_count ?? null
 
   useEffect(() => {
     if (liveCount === null) return
@@ -334,7 +335,7 @@ export default function Attendance() {
 
   const meeting = meetingQuery.data
   const participants = participantsQuery.data?.pages.flatMap((page) => page.data) ?? []
-  const participantsTotal = participantsQuery.data?.pages[0]?.total ?? 0
+  const participantsTotal = participantsQuery.data?.pages[0]?.meta?.participants ?? 0
   const candidates = candidatesQuery.data?.pages.flatMap((page) => page.data) ?? []
   const candidatesTotal = candidatesQuery.data?.pages[0]?.total ?? 0
 
@@ -372,7 +373,7 @@ export default function Attendance() {
               .join(' · ')}
           >
             <Badge variant="secondary" className="self-center px-3 py-1 text-sm">
-              {meeting?.members_count ?? 0} participant{meeting?.members_count === 1 ? '' : 's'}
+              {meeting?.participants_count ?? 0} participant{meeting?.participants_count === 1 ? '' : 's'}
             </Badge>
             {/*
               Members check themselves in by scanning this; the badge scanner
@@ -545,6 +546,12 @@ export default function Attendance() {
                           'No contact details'}
                       </p>
                     </div>
+                    {/* Says where an unfamiliar name came from. */}
+                    {member.is_visitor ? (
+                      <Badge variant="outline" className="shrink-0">
+                        {member.office || 'No office'}
+                      </Badge>
+                    ) : null}
                     <Button
                       size="icon"
                       variant="ghost"

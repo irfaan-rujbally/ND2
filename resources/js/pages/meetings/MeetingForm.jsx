@@ -55,7 +55,6 @@ export default function MeetingForm() {
     queryFn: () =>
       search('meetings', {
         filters: [{ field: 'id', operator: '=', value: Number(id) }],
-        aggregates: [{ relation: 'members', type: 'count' }],
         limit: 10,
       }).then((response) => response.data[0] ?? null),
   })
@@ -140,7 +139,7 @@ export default function MeetingForm() {
 
   const offices = officesQuery.data?.data ?? []
   const loading = !officesQuery.isSuccess || (isEdit && (meetingQuery.isPending || !hydrated))
-  const participants = meetingQuery.data?.members_count
+  const participants = meetingQuery.data?.participants_count
 
   return (
     <div className="mx-auto max-w-2xl">

@@ -16,6 +16,12 @@ use Illuminate\Http\Request;
  * total_meetings is also what the members list divides by to turn a member's
  * meetings_count aggregate into an attendance percentage, so the two numbers
  * always come from the same source.
+ *
+ * Attendance counts everyone recorded at this office's meetings, including a
+ * visitor from another office: they were present, and the meeting's own
+ * participants list shows them. The two numbers have to agree -- the dashboard
+ * used to read one participant more than the meeting did, which is what sent
+ * someone looking for a bug that was really a member with no office recorded.
  */
 class StatsController extends Controller
 {

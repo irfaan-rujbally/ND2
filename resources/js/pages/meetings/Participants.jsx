@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Eye, UserPlus, Users } from 'lucide-react'
-import { search } from '@/lib/api'
+import { fetchMeetingParticipants, search } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -69,59 +69,30 @@ export default function Participants() {
       search('meetings', {
         filters: [{ field: 'id', operator: '=', value: meetingId }],
         includes: [{ relation: 'office' }],
-        aggregates: [{ relation: 'members', type: 'count' }],
         limit: 10,
       }).then((response) => response.data[0] ?? null),
   })
 
   /*
-   * Ordered by when each member was recorded rather than by name: this reads as
-   * the roll of the meeting, and who arrived when is the one thing a name-sorted
-   * list throws away. The ordering lives in a scope because it sorts on the
-   * pivot's timestamps, which are not fields of the member resource -- the same
-   * reason the attendance panel uses it.
+   * Sent to the meeting's own participants endpoint rather than to the members
+   * search: the latter only ever returns the caller's own office, so a member
+   * who travelled here from another office would be missing from the list of
+   * people recorded at this meeting. Ordering defaults to arrival order there.
    */
-  const payload = useMemo(() => {
-    const filters = [{ field: 'meetings.id', operator: '=', value: meetingId }]
-
-    if (term) {
-      filters.push({
-        nested: [
-          { field: 'first_name', operator: 'like', value: `%${term}%` },
-          { field: 'last_name', operator: 'like', value: `%${term}%`, type: 'or' },
-        ],
-      })
-    }
-
-    if (constituency) {
-      filters.push({ field: 'constituency', operator: '=', value: Number(constituency) })
-    }
-
-    /*
-     * A chosen column and the recorded-order scope are mutually exclusive: the
-     * scope reorders the query to drop the resource's default name ordering, so
-     * it would discard the chosen column too. Only one of the two is sent.
-     */
-    const ordering = sort
-      ? { sorts: [{ field: sort, direction }] }
-      : { scopes: [{ name: 'orderByAttendanceAddedAt', parameters: [meetingId] }] }
-
-    return {
-      filters,
-      ...ordering,
-      page,
-      limit: PER_PAGE,
-    }
-  }, [meetingId, term, constituency, sort, direction, page])
+  const filters = useMemo(
+    () => ({ q: term, constituency, sort, direction, page, limit: PER_PAGE }),
+    [term, constituency, sort, direction, page],
+  )
 
   const participantsQuery = useQuery({
-    queryKey: ['meeting-participants', meetingId, payload],
-    queryFn: () => search('members', payload),
+    queryKey: ['meeting-participants', meetingId, filters],
+    queryFn: () => fetchMeetingParticipants(meetingId, filters),
     placeholderData: (previous) => previous,
   })
 
   const meeting = meetingQuery.data
   const rows = participantsQuery.data?.data ?? []
+  const total = participantsQuery.data?.meta?.participants
   const hasFilters = Boolean(term || constituency)
   const onSort = (field, nextDirection) => setParam({ sort: field, direction: nextDirection })
   const times = formatTimeRange(meeting?.start_time, meeting?.end_time)
@@ -180,9 +151,9 @@ export default function Participants() {
           </Button>
         ) : null}
         {/* Counts everyone present, not the filtered rows below. */}
-        {meeting?.members_count != null ? (
+        {total != null ? (
           <Badge variant="secondary" className="w-fit whitespace-nowrap">
-            {meeting.members_count} recorded present
+            {total} recorded present
           </Badge>
         ) : null}
       </div>
@@ -190,7 +161,7 @@ export default function Participants() {
       {participantsQuery.error ? (
         <ErrorState error={participantsQuery.error} onRetry={participantsQuery.refetch} />
       ) : participantsQuery.isPending ? (
-        <TableSkeleton columns={5} />
+        <TableSkeleton columns={6} />
       ) : rows.length === 0 ? (
         <EmptyState
           icon={Users}
@@ -240,6 +211,7 @@ export default function Participants() {
                       Constituency
                     </SortableHead>
                   </TableHead>
+                  <TableHead>Office</TableHead>
                   <TableHead className="w-16 text-right">View</TableHead>
                 </TableRow>
               </TableHeader>
@@ -257,6 +229,16 @@ export default function Participants() {
                     <TableCell className="tabular-nums">{member.phone || '-'}</TableCell>
                     <TableCell className="text-muted-foreground">{member.email || '-'}</TableCell>
                     <TableCell>{constituencyLabel(member.constituency)}</TableCell>
+                    <TableCell>
+                      {member.office || '-'}
+                      {/* A member of another office who attended is still part of this
+                          meeting's record, and worth marking as a visitor. */}
+                      {member.is_visitor ? (
+                        <Badge variant="outline" className="ml-2 align-middle">
+                          Visitor
+                        </Badge>
+                      ) : null}
+                    </TableCell>
                     <TableCell className="text-right">
                       <Button
                         asChild
@@ -286,6 +268,11 @@ export default function Participants() {
                   >
                     {fullName(member) || 'Unnamed member'}
                   </Link>
+                  {member.is_visitor ? (
+                    <Badge variant="outline" className="ml-2 align-middle">
+                      Visitor · {member.office || 'no office'}
+                    </Badge>
+                  ) : null}
                   <dl className="mt-2 space-y-1 text-sm">
                     {member.phone ? (
                       <div className="flex justify-between gap-3">
@@ -312,9 +299,9 @@ export default function Participants() {
           </div>
 
           <Pagination
-            page={participantsQuery.data.current_page}
-            lastPage={participantsQuery.data.last_page}
-            total={participantsQuery.data.total}
+            page={participantsQuery.data.meta.current_page}
+            lastPage={participantsQuery.data.meta.last_page}
+            total={participantsQuery.data.meta.total}
             onPageChange={(next) => setParam({ page: next }, { resetPage: false })}
           />
         </>
