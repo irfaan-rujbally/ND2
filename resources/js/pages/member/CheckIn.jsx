@@ -236,7 +236,7 @@ export default function CheckIn() {
       {mustChangePassword && (
         <p className="rounded-lg bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-700 dark:text-amber-400">
           You are still using your starting password, which others could work out.{' '}
-          <Link to="/my/password" className="font-medium underline">
+          <Link to="/my" className="font-medium underline">
             Change it
           </Link>
           .

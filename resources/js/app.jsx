@@ -31,7 +31,7 @@ import UserForm from '@/pages/users/UserForm'
 import CheckIn from '@/pages/member/CheckIn'
 import MyDetails from '@/pages/member/MyDetails'
 import MyMeetings from '@/pages/member/MyMeetings'
-import ChangePassword from '@/pages/member/ChangePassword'
+import News from '@/pages/member/News'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -123,7 +123,7 @@ function App() {
       >
         <Route index element={<MyDetails />} />
         <Route path="meetings" element={<MyMeetings />} />
-        <Route path="password" element={<ChangePassword />} />
+        <Route path="news" element={<News />} />
       </Route>
 
       {/* Print view: deliberately outside AppLayout so no app chrome is printed. */}

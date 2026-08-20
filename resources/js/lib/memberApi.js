@@ -86,6 +86,7 @@ export const memberApi = {
   changePassword: (values) => request('PUT', '/profile/password', values),
 
   meetings: () => request('GET', '/meetings'),
+  news: () => request('GET', '/news'),
 
   /** Spends a scanned meeting code to record the member present. */
   checkIn: (meetingToken) => request('POST', '/check-in', { meeting_token: meetingToken }),

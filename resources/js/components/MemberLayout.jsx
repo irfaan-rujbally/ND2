@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { CalendarCheck, KeyRound, LogOut, ScanLine, UserCircle } from 'lucide-react'
+import { CalendarCheck, LogOut, Newspaper, ScanLine, UserCircle } from 'lucide-react'
 
 import { useMemberAuth } from '@/auth/MemberAuthProvider'
 import { Button } from '@/components/ui/button'
@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils'
 const navigation = [
   { to: '/my', label: 'My details', icon: UserCircle, end: true },
   { to: '/my/meetings', label: 'My meetings', icon: CalendarCheck },
-  { to: '/my/password', label: 'Password', icon: KeyRound },
+  { to: '/my/news', label: 'News', icon: Newspaper },
 ]
 
 export function MemberLayout() {

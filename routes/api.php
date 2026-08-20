@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\PublicBadgeController;
 use App\Http\Controllers\Api\Member\AuthController as MemberAuthController;
 use App\Http\Controllers\Api\Member\CheckInController as MemberCheckInController;
 use App\Http\Controllers\Api\Member\MeetingsController as MemberMeetingsController;
+use App\Http\Controllers\Api\Member\NewsController as MemberNewsController;
 use App\Http\Controllers\Api\Member\ProfileController as MemberProfileController;
 use App\Http\Controllers\Api\StatsController;
 use Illuminate\Support\Facades\Route;
@@ -68,6 +69,7 @@ Route::prefix('member')->name('api.member.')->group(function () {
                 ->name('profile.password');
 
             Route::get('meetings', [MemberMeetingsController::class, 'index'])->name('meetings.index');
+            Route::get('news', MemberNewsController::class)->name('news.index');
 
             // The check-in itself. Throttled: the meeting token is public, so
             // this is the one member route a stranger might try to hammer.

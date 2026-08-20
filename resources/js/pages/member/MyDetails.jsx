@@ -12,6 +12,7 @@ import { ErrorState, Field, Spinner } from '@/components/common'
 import { qrToDataUrl } from '@/lib/qr'
 import { fullName } from '@/lib/utils'
 import { constituencyLabel } from '@/lib/membership'
+import ChangePassword from '@/pages/member/ChangePassword'
 
 /**
  * The member's own record: the contact details they may change, and the badge
@@ -225,6 +226,10 @@ export default function MyDetails() {
           </form>
         </CardContent>
       </Card>
+
+      <section id="password" className="scroll-mt-4" aria-label="Change password">
+        <ChangePassword />
+      </section>
     </div>
   )
 }

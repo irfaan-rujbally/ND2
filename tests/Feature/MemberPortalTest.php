@@ -9,6 +9,8 @@ use App\Models\Office;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
 
@@ -34,6 +36,7 @@ class MemberPortalTest extends TestCase
         parent::setUp();
 
         RateLimiter::clear('');
+        Cache::flush();
 
         $this->office = Office::create(['name' => 'Bonne Terre']);
 
@@ -208,6 +211,56 @@ class MemberPortalTest extends TestCase
     public function test_the_portal_needs_a_token_at_all(): void
     {
         $this->getJson('/api/member/profile')->assertUnauthorized();
+    }
+
+    public function test_a_member_can_load_the_latest_facebook_posts(): void
+    {
+        config()->set('services.facebook', [
+            'page_id' => '123456',
+            'page_access_token' => 'secret-page-token',
+            'graph_version' => 'v26.0',
+            'news_limit' => 10,
+            'cache_seconds' => 300,
+        ]);
+
+        Http::fake([
+            'graph.facebook.com/*' => Http::response(['data' => [[
+                'id' => '123456_789',
+                'message' => 'A new announcement',
+                'created_time' => '2026-08-20T10:00:00+0000',
+                'permalink_url' => 'https://www.facebook.com/123456/posts/789',
+                'full_picture' => 'https://example.test/photo.jpg',
+            ]]]),
+        ]);
+
+        $token = $this->signIn();
+
+        $this->getJson('/api/member/news', $this->auth($token))
+            ->assertOk()
+            ->assertJsonPath('data.0.id', '123456_789')
+            ->assertJsonPath('data.0.image_url', 'https://example.test/photo.jpg')
+            ->assertJsonMissingPath('data.0.access_token');
+
+        Http::assertSent(fn ($request) =>
+            str_starts_with($request->url(), 'https://graph.facebook.com/v26.0/123456/posts?')
+            && $request->hasHeader('Authorization', 'Bearer secret-page-token')
+            && ! str_contains($request->url(), 'secret-page-token')
+            && $request['limit'] === 10
+        );
+    }
+
+    public function test_news_reports_a_clear_error_when_facebook_is_not_configured(): void
+    {
+        config()->set('services.facebook.page_id', null);
+        config()->set('services.facebook.page_access_token', null);
+
+        $token = $this->signIn();
+
+        $this->getJson('/api/member/news', $this->auth($token))
+            ->assertStatus(503)
+            ->assertJsonPath('message', 'The news feed has not been configured yet.');
+
+        Http::assertNothingSent();
     }
 
     /* ---------------------------------------------------------------- */
