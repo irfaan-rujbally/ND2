@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowUpRight, Clock3, Newspaper, RefreshCw, Sparkles } from 'lucide-react'
+import { ArrowUpRight, Clock3, LayoutTemplate, Newspaper, RefreshCw, Sparkles } from 'lucide-react'
 
 import { EmptyState, ErrorState, Spinner } from '@/components/common'
+import { FacebookPagePlugin } from '@/components/facebook-page-plugin'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { memberApi } from '@/lib/memberApi'
@@ -88,7 +90,48 @@ function NewsCard({ post }) {
   )
 }
 
-export default function News() {
+/*
+ * Two ways to show the same page: our own cards, built from the Graph API, and
+ * Facebook's Page Plugin, which embeds their timeline in an iframe. The toggle
+ * is here so both can be compared before settling on one.
+ */
+function EmbeddedTimeline() {
+  return (
+    <div className="space-y-4">
+      <FacebookPagePlugin height={720} />
+      <p className="text-xs text-muted-foreground">
+        The timeline is rendered by Facebook inside an iframe: it always shows their styling, needs no page access token,
+        and is hidden entirely when a browser blocks facebook.com.
+      </p>
+    </div>
+  )
+}
+
+function ViewToggle({ view, onChange }) {
+  const options = [
+    { key: 'cards', label: 'Our cards', icon: Newspaper },
+    { key: 'facebook', label: 'Facebook embed', icon: LayoutTemplate },
+  ]
+
+  return (
+    <div className="inline-flex rounded-lg border p-0.5" role="group" aria-label="News layout">
+      {options.map(({ key, label, icon: Icon }) => (
+        <Button
+          key={key}
+          type="button"
+          size="sm"
+          variant={view === key ? 'secondary' : 'ghost'}
+          aria-pressed={view === key}
+          onClick={() => onChange(key)}
+        >
+          <Icon className="size-4" /> {label}
+        </Button>
+      ))}
+    </div>
+  )
+}
+
+function NewsFeed() {
   const { data, isLoading, error, refetch, isFetching, dataUpdatedAt } = useQuery({
     queryKey: ['member', 'news'], queryFn: () => memberApi.news(), staleTime: 5 * 60 * 1000,
     refetchInterval: 5 * 60 * 1000, refetchIntervalInBackground: true,
@@ -106,25 +149,16 @@ export default function News() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-nd-red">
-            <span className="h-px w-6 bg-nd-red" /> Official feed
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Latest news</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Updates from Nouveaux Démocrates on Facebook.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          {dataUpdatedAt > 0 && (
-            <p className="hidden text-xs text-muted-foreground sm:block">
-              Updated {new Intl.DateTimeFormat(undefined, { timeStyle: 'short' }).format(dataUpdatedAt)}
-            </p>
-          )}
-          <Button type="button" variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching} aria-label="Refresh news">
-            <RefreshCw className={cn('size-4', isFetching && 'animate-spin')} /> Refresh
-          </Button>
-        </div>
-      </header>
+      <div className="flex items-center justify-end gap-3">
+        {dataUpdatedAt > 0 && (
+          <p className="hidden text-xs text-muted-foreground sm:block">
+            Updated {new Intl.DateTimeFormat(undefined, { timeStyle: 'short' }).format(dataUpdatedAt)}
+          </p>
+        )}
+        <Button type="button" variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching} aria-label="Refresh news">
+          <RefreshCw className={cn('size-4', isFetching && 'animate-spin')} /> Refresh
+        </Button>
+      </div>
 
       <FeaturedPost post={latest} />
 
@@ -139,6 +173,27 @@ export default function News() {
           </div>
         </section>
       )}
+    </div>
+  )
+}
+
+export default function News() {
+  const [view, setView] = useState('cards')
+
+  return (
+    <div className="space-y-6">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-nd-red">
+            <span className="h-px w-6 bg-nd-red" /> Official feed
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Latest news</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Updates from Nouveaux Démocrates on Facebook.</p>
+        </div>
+        <ViewToggle view={view} onChange={setView} />
+      </header>
+
+      {view === 'cards' ? <NewsFeed /> : <EmbeddedTimeline />}
     </div>
   )
 }

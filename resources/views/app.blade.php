@@ -16,5 +16,7 @@
 </head>
 <body class="h-full">
     <div id="app" class="h-full"></div>
+    {{-- The Facebook SDK renders its plugin dialogs into this element. --}}
+    <div id="fb-root"></div>
 </body>
 </html>
