@@ -302,9 +302,16 @@ export default function CheckIn() {
         log={scanLog}
         result={scanResult}
         onContinue={() => setScanResult(null)}
+        // One meeting code per member, so a successful scan ends the dialog
+        // rather than reopening the camera.
+        singleScan
         // The default copy addresses a member of staff working the door; here the
         // person reading it is the member being checked in.
         messages={{
+          title: 'Scan the meeting code',
+          aim: "Point the camera at the meeting's QR code.",
+          rescan: 'Scan again',
+          notOurs: 'That is not a meeting code.',
           added: 'You are checked in.',
           already: 'You were already checked in to this meeting.',
           failed: 'Not checked in.',

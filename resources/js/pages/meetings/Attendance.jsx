@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Check, Pencil, Plus, ScanLine, UserMinus, UserPlus } from 'lucide-react'
@@ -44,15 +44,31 @@ const NEW_MEMBER = {
 }
 
 /** Turns a Lomkit paginator into an infinite query over every matching row. */
-function usePagedMembers(queryKey, payload) {
+function usePagedMembers(queryKey, payload, options) {
   return useInfiniteQuery({
     queryKey,
     initialPageParam: 1,
     queryFn: ({ pageParam }) => search('members', { ...payload, page: pageParam, limit: PAGE_SIZE }),
     getNextPageParam: (lastPage) =>
       lastPage.current_page < lastPage.last_page ? lastPage.current_page + 1 : undefined,
+    ...options,
   })
 }
+
+/*
+ * How often the screen asks whether anyone new has arrived.
+ *
+ * Members can now check themselves in from their own phone (/check-in), so this
+ * screen cannot assume it caused every change. There is no broadcasting in this
+ * app -- BROADCAST_CONNECTION is `log` and there is no websocket server -- so it
+ * polls. React Query pauses interval refetches while the tab is in the
+ * background, so an abandoned screen stops asking on its own.
+ */
+const LIVE_POLL_MS = 5000
+
+/* Returning to the tab should show the truth immediately, not on the next tick.
+   The app-wide default has focus refetching off, so it is re-enabled here. */
+const LIVE = { refetchOnWindowFocus: true, staleTime: 0 }
 
 function MemberLine({ children }) {
   return <li className="flex items-center justify-between gap-3 px-1 py-2.5">{children}</li>
@@ -100,6 +116,16 @@ export default function Attendance() {
         aggregates: [{ relation: 'members', type: 'count' }],
         limit: 10,
       }).then((response) => response.data[0] ?? null),
+
+    /*
+     * Only this query is on a timer. It is a single row carrying the participant
+     * count, so it is the cheap way to notice a change; the two lists below are
+     * infinite queries, and polling those would re-request every page the
+     * operator has scrolled through, every tick.
+     */
+    refetchInterval: LIVE_POLL_MS,
+    refetchIntervalInBackground: false,
+    ...LIVE,
   })
 
   /*
@@ -117,7 +143,7 @@ export default function Attendance() {
     [meetingId],
   )
 
-  const participantsQuery = usePagedMembers(['attendance', meetingId], participantsPayload)
+  const participantsQuery = usePagedMembers(['attendance', meetingId], participantsPayload, LIVE)
 
   /*
    * Every member of the office is offered, not just the first page: the panel
@@ -149,7 +175,44 @@ export default function Attendance() {
     }
   }, [term, meetingId])
 
-  const candidatesQuery = usePagedMembers(['attendance-candidates', meetingId, term], candidatesPayload)
+  const candidatesQuery = usePagedMembers(
+    ['attendance-candidates', meetingId, term],
+    candidatesPayload,
+    LIVE,
+  )
+
+  /*
+   * The poll above watches the participant count; this turns a change in it into
+   * a reload of the lists. So a member checking themselves in on their phone
+   * shows up on the door screen within one poll, without the lists being
+   * refetched on every tick when nothing has happened.
+   *
+   * The first reading only seeds the ref -- there is nothing to reload on the
+   * initial load, and invalidating there would refetch the lists the moment they
+   * arrived.
+   *
+   * Known gap: one arrival plus one removal between two polls leaves the count
+   * unchanged and the lists briefly stale. Rare, self-corrects on the next real
+   * change, and cheaper than polling three paginated queries forever.
+   */
+  const knownCountRef = useRef(null)
+  const liveCount = meetingQuery.data?.members_count ?? null
+
+  useEffect(() => {
+    if (liveCount === null) return
+
+    if (knownCountRef.current === null) {
+      knownCountRef.current = liveCount
+
+      return
+    }
+
+    if (knownCountRef.current !== liveCount) {
+      knownCountRef.current = liveCount
+      queryClient.invalidateQueries({ queryKey: ['attendance', meetingId] })
+      queryClient.invalidateQueries({ queryKey: ['attendance-candidates', meetingId] })
+    }
+  }, [liveCount, meetingId, queryClient])
 
   const refreshAttendance = () => {
     queryClient.invalidateQueries({ queryKey: ['attendance', meetingId] })

@@ -6,11 +6,32 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { parseMemberQr } from '@/lib/qr'
 import { cn } from '@/lib/utils'
 
+/*
+ * Wording for a member of staff working the door, which is what this dialog was
+ * built for. The member portal scans the same codes but the reader is the member
+ * themselves, so it passes overrides -- telling someone "member already scanned"
+ * about themselves, or asking them to point the camera at a badge when they are
+ * looking for a code on a wall, is the wrong voice.
+ */
+const DEFAULT_COPY = {
+  continueScanning: 'Continue scanning',
+  close: 'Close',
+  tryAgain: 'Try again',
+  title: 'Scan member badges',
+  aim: 'Point the camera at a badge.',
+  rescan: 'Scan the same badge again',
+  notOurs: 'That code is not a member badge.',
+  added: 'Recorded at this meeting.',
+  already: 'Member already scanned.',
+  failed: 'Not recorded.',
+  pending: 'Checking the badge…',
+}
+
 /**
  * What the operator is shown between one badge and the next. `result` is null
  * while the attach request is still in flight.
  */
-function ScanResult({ result, onContinue, messages }) {
+function ScanResult({ result, onContinue, onDone, singleScan, messages }) {
   const status = result?.status
 
   const tone =
@@ -30,13 +51,7 @@ function ScanResult({ result, onContinue, messages }) {
    * wording rather than telling someone "member already scanned" about
    * themselves.
    */
-  const copy = {
-    added: 'Recorded at this meeting.',
-    already: 'Member already scanned.',
-    failed: 'Not recorded.',
-    pending: 'Checking the badge…',
-    ...messages,
-  }
+  const copy = { ...DEFAULT_COPY, ...messages }
 
   const message = copy[status ?? 'pending'] ?? copy.pending
 
@@ -50,10 +65,24 @@ function ScanResult({ result, onContinue, messages }) {
         </div>
       </div>
 
-      <Button className="w-full" onClick={onContinue} disabled={!status} autoFocus>
-        <ArrowRight className="size-4" />
-        Continue scanning
-      </Button>
+      {/*
+        A door operator scans one badge after another, so the default is to carry
+        on. A member scans exactly one meeting code, so once it has been accepted
+        there is nothing left to do and the button closes the dialog instead.
+        A *failed* scan still has to offer another go -- an unrecognised code is
+        the one case where a member does need to try again.
+      */}
+      {singleScan && (status === 'added' || status === 'already') ? (
+        <Button className="w-full" onClick={onDone} autoFocus>
+          <Check className="size-4" />
+          {copy.close}
+        </Button>
+      ) : (
+        <Button className="w-full" onClick={onContinue} disabled={!status} autoFocus>
+          <ArrowRight className="size-4" />
+          {singleScan ? copy.tryAgain : copy.continueScanning}
+        </Button>
+      )}
     </div>
   )
 }
@@ -95,6 +124,7 @@ export function QrScannerDialog({
   result = null,
   onContinue,
   messages,
+  singleScan = false,
 }) {
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
@@ -108,6 +138,8 @@ export function QrScannerDialog({
    * renders from the state.
    */
   const pausedRef = useRef(false)
+
+  const copy = { ...DEFAULT_COPY, ...messages }
 
   const [error, setError] = useState(null)
   const [ready, setReady] = useState(false)
@@ -174,7 +206,7 @@ export function QrScannerDialog({
       const token = parseMemberQr(found.data)
 
       if (!token) {
-        setHint('That code is not a member badge.')
+        setHint(copy.notOurs)
       } else if (token !== lastTokenRef.current) {
         /*
          * Identity, not a timer: after Continue the same badge is often still
@@ -268,7 +300,7 @@ export function QrScannerDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Scan member badges</DialogTitle>
+          <DialogTitle>{copy.title}</DialogTitle>
         </DialogHeader>
 
         {error ? (
@@ -314,10 +346,16 @@ export function QrScannerDialog({
             </div>
 
             {paused ? (
-              <ScanResult result={result} onContinue={resume} messages={messages} />
+              <ScanResult
+                result={result}
+                onContinue={resume}
+                onDone={() => onOpenChange(false)}
+                singleScan={singleScan}
+                messages={messages}
+              />
             ) : (
               <p className="text-center text-xs text-muted-foreground">
-                {hint ?? 'Point the camera at a badge.'}
+                {hint ?? copy.aim}
               </p>
             )}
 
@@ -346,10 +384,14 @@ export function QrScannerDialog({
               </div>
             ) : null}
 
-            <Button variant="outline" className="w-full" onClick={scanSameAgain}>
-              <RotateCcw className="size-4" />
-              Scan the same badge again
-            </Button>
+            {/* Re-reading the code still in frame is an operator's tool for a
+                queue of badges; a member scanning one wall poster does not need it. */}
+            {singleScan ? null : (
+              <Button variant="outline" className="w-full" onClick={scanSameAgain}>
+                <RotateCcw className="size-4" />
+                {copy.rescan}
+              </Button>
+            )}
           </>
         )}
       </DialogContent>
