@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Download, QrCode } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { qrToDataUrl, qrToSvg } from '@/lib/qr'
+import { downloadQrPng, qrToSvg } from '@/lib/qr'
 import { cn, fullName } from '@/lib/utils'
 
 /** Renders a member's QR as inline SVG, which stays sharp when printed. */
@@ -61,13 +61,7 @@ export function MemberQrPanel({ member }) {
   const download = async () => {
     setDownloading(true)
     try {
-      const url = await qrToDataUrl(member.qr_token)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `${(fullName(member) || 'member').replace(/\s+/g, '-').toLowerCase()}-badge.png`
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
+      await downloadQrPng(member.qr_token, `${(fullName(member) || 'member').replace(/\s+/g, '-').toLowerCase()}-badge.png`)
     } finally {
       setDownloading(false)
     }

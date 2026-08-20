@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { QrImage } from '@/components/qr-badge'
 import { Field, Spinner } from '@/components/common'
 import { OrbitBorder } from '@/components/orbit-border'
-import { qrToDataUrl } from '@/lib/qr'
+import { downloadQrPng } from '@/lib/qr'
 import { fullName } from '@/lib/utils'
 
 const EMPTY = { national_id: '', date_of_birth: '' }
@@ -45,13 +45,7 @@ export default function PublicBadge() {
   const download = async () => {
     setDownloading(true)
     try {
-      const url = await qrToDataUrl(member.qr_token)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `${(fullName(member) || 'member').replace(/\s+/g, '-').toLowerCase()}-badge.png`
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
+      await downloadQrPng(member.qr_token, `${(fullName(member) || 'member').replace(/\s+/g, '-').toLowerCase()}-badge.png`)
     } finally {
       setDownloading(false)
     }

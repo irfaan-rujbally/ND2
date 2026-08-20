@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { ErrorState, Field, Spinner } from '@/components/common'
-import { qrToDataUrl } from '@/lib/qr'
+import { downloadQrPng } from '@/lib/qr'
 import { fullName } from '@/lib/utils'
 import { constituencyLabel } from '@/lib/membership'
 import ChangePassword from '@/pages/member/ChangePassword'
@@ -84,13 +84,7 @@ export default function MyDetails() {
   const download = async () => {
     setDownloading(true)
     try {
-      const url = await qrToDataUrl(profile.qr_token)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `${(fullName(profile) || 'member').replace(/\s+/g, '-').toLowerCase()}-badge.png`
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
+      await downloadQrPng(profile.qr_token, `${(fullName(profile) || 'member').replace(/\s+/g, '-').toLowerCase()}-badge.png`)
     } finally {
       setDownloading(false)
     }

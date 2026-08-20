@@ -54,3 +54,40 @@ export async function qrToDataUrl(token, { margin = 2, width = 512 } = {}) {
     width,
   })
 }
+
+/**
+ * Saves a badge as a PNG file.
+ *
+ * Mobile browsers ignore the `download` attribute on a `data:` URL — iOS Safari
+ * either navigates to the image or does nothing at all — so the PNG is handed
+ * over as a blob instead, and via the share sheet on the browsers that have no
+ * download attribute to begin with (older iOS, in-app webviews).
+ */
+export async function downloadQrPng(token, filename, options = {}) {
+  const dataUrl = await qrToDataUrl(token, options)
+  const blob = await (await fetch(dataUrl)).blob()
+
+  const link = document.createElement('a')
+  if (!('download' in link)) {
+    const file = new File([blob], filename, { type: 'image/png' })
+    if (navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: filename })
+        return
+      } catch (error) {
+        // A cancelled share sheet is not a failure; anything else falls through.
+        if (error?.name === 'AbortError') return
+      }
+    }
+  }
+
+  const url = URL.createObjectURL(blob)
+  link.href = url
+  link.download = filename
+  link.rel = 'noopener'
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  // Revoking straight away can cancel the save on some mobile browsers.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+}

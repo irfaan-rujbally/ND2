@@ -5,7 +5,7 @@ import { QrImage } from '@/components/qr-badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Spinner } from '@/components/common'
-import { qrToDataUrl } from '@/lib/qr'
+import { downloadQrPng } from '@/lib/qr'
 import { formatDate } from '@/lib/utils'
 
 /**
@@ -28,13 +28,7 @@ export function MeetingCheckInCode({ meeting }) {
   const download = async () => {
     setDownloading(true)
     try {
-      const url = await qrToDataUrl(meeting.qr_token)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `${(meeting.title || 'meeting').replace(/\s+/g, '-').toLowerCase()}-check-in.png`
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
+      await downloadQrPng(meeting.qr_token, `${(meeting.title || 'meeting').replace(/\s+/g, '-').toLowerCase()}-check-in.png`)
     } finally {
       setDownloading(false)
     }
