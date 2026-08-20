@@ -109,8 +109,8 @@ function EmbeddedTimeline() {
 
 function ViewToggle({ view, onChange }) {
   const options = [
-    { key: 'cards', label: 'Our cards', icon: Newspaper },
-    { key: 'facebook', label: 'Facebook embed', icon: LayoutTemplate },
+    { key: 'facebook', label: 'Default', icon: LayoutTemplate },
+    { key: 'cards', label: 'Custom', icon: Newspaper },
   ]
 
   return (
@@ -178,7 +178,7 @@ function NewsFeed() {
 }
 
 export default function News() {
-  const [view, setView] = useState('cards')
+  const [view, setView] = useState('facebook')
 
   return (
     <div className="space-y-6">
