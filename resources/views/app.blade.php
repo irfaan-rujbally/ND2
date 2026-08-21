@@ -13,6 +13,28 @@
     <meta name="theme-color" content="#1b2a8f" />
     <link rel="icon" type="image/x-icon" href="/images/icon.ico">
 
+    {{--
+        Applies the saved theme before the first paint.
+
+        ThemeToggle sets this same class, but not until the JS bundle has parsed —
+        long enough that a dark-mode member saw a white flash on every load, which
+        is most obvious on a phone. Deliberately inline and synchronous: an
+        external or deferred script would paint first and defeat the point.
+
+        The key and the fallback must match resources/js/components/theme-toggle.jsx.
+        Wrapped in try/catch because localStorage throws outright in a privacy mode
+        rather than returning null, and a theme is not worth a blank page.
+    --}}
+    <script>
+        try {
+            var stored = localStorage.getItem('nd.theme');
+            var dark = stored
+                ? stored === 'dark'
+                : window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (dark) document.documentElement.classList.add('dark');
+        } catch (e) {}
+    </script>
+
     <title>Nouveaux Démocrates</title>
 
     {{-- Installable-app metadata. See public/manifest.json and public/sw.js. --}}

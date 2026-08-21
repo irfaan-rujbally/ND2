@@ -11,6 +11,7 @@ import {
 
 import { useMemberAuth } from '@/auth/MemberAuthProvider'
 import { Button } from '@/components/ui/button'
+import { ThemeToggle } from '@/components/theme-toggle'
 import { cn } from '@/lib/utils'
 
 /*
@@ -55,7 +56,14 @@ export function MemberLayout() {
             height={52}
             className="h-9 w-auto"
           />
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-1 sm:gap-2">
+            {/*
+              The same component the staff layout uses, sharing its stored
+              preference: a member who sets dark once keeps it, and the two
+              implementations cannot drift apart.
+            */}
+            <ThemeToggle />
+
             <Button variant="outline" size="sm" asChild>
               <NavLink to="/check-in">
                 <ScanLine className="size-4" />

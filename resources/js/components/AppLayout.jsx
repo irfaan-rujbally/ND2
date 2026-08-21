@@ -7,8 +7,6 @@ import {
   Megaphone,
   Menu,
   MessagesSquare,
-  Moon,
-  Sun,
   UserCog,
   Users,
 } from 'lucide-react'
@@ -23,6 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { ThemeToggle } from '@/components/theme-toggle'
 import { cn, initials } from '@/lib/utils'
 
 const navigation = [
@@ -81,25 +80,6 @@ function NavItems({ onNavigate, className }) {
         </NavLink>
       ))}
     </nav>
-  )
-}
-
-function ThemeToggle() {
-  const [dark, setDark] = useState(() => {
-    const stored = localStorage.getItem('nd.theme')
-    if (stored) return stored === 'dark'
-    return window.matchMedia('(prefers-color-scheme: dark)').matches
-  })
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', dark)
-    localStorage.setItem('nd.theme', dark ? 'dark' : 'light')
-  }, [dark])
-
-  return (
-    <Button variant="ghost" size="icon" onClick={() => setDark((value) => !value)} aria-label="Toggle theme">
-      {dark ? <Moon className="size-4" /> : <Sun className="size-4" />}
-    </Button>
   )
 }
 
