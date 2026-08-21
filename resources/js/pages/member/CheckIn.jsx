@@ -2,12 +2,11 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowLeft,
-  CalendarCheck,
   CheckCircle2,
   Info,
+  LogIn,
   LogOut,
   QrCode,
-  ScanLine,
   UserCircle,
 } from 'lucide-react'
 
@@ -125,7 +124,12 @@ export default function CheckIn() {
               className="mx-auto h-14 w-auto sm:h-16"
             />
           </OrbitBorder>
-          <p className="mt-4 text-sm font-medium text-white/80">Meeting check-in</p>
+          {/*
+            "Access Member's Portal" rather than "Meeting check-in": this screen
+            is the members' way in generally — scanning a meeting code is one of
+            the things they do once here, not the only one.
+          */}
+          <p className="mt-4 text-sm font-medium text-white/80">Access Member&apos;s Portal</p>
         </div>
 
         <Card className="border-white/20 bg-card/95 shadow-2xl backdrop-blur">
@@ -167,13 +171,6 @@ export default function CheckIn() {
   if (!isAuthenticated) {
     return shell(
       <form onSubmit={submit} className="space-y-4" noValidate>
-        <div className="flex gap-3 rounded-lg bg-muted/50 p-3">
-          <ScanLine className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            Sign in, then scan the QR code shown at the meeting to be recorded present.
-          </p>
-        </div>
-
         {message && (
           <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{message}</p>
         )}
@@ -205,14 +202,9 @@ export default function CheckIn() {
         </Field>
 
         <Button type="submit" className="w-full" disabled={submitting}>
-          {submitting ? <Spinner /> : <ScanLine className="size-4" />}
-          Sign in to check in
+          {submitting ? <Spinner /> : <LogIn className="size-4" />}
+          Sign in as member
         </Button>
-
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          First time? Your password is the first letter of your last name in capitals followed by the
-          last 7 digits of your phone number.
-        </p>
 
         <p className="text-center text-xs text-muted-foreground">
           Just need your badge?{' '}
@@ -281,16 +273,15 @@ export default function CheckIn() {
       </Button>
 
       <div className="grid gap-2">
+        {/*
+          One way in rather than two. The portal has its own tab bar for details,
+          meetings, announcements and news, so deep-linking two of those four from
+          here only made the shorter list look like the whole of it.
+        */}
         <Button variant="outline" asChild>
           <Link to="/my">
             <UserCircle className="size-4" />
-            My details and badge
-          </Link>
-        </Button>
-        <Button variant="outline" asChild>
-          <Link to="/my/meetings">
-            <CalendarCheck className="size-4" />
-            My meetings
+            My Portal
           </Link>
         </Button>
         <Button variant="ghost" size="sm" onClick={signOut}>

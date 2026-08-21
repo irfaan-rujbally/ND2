@@ -6,9 +6,9 @@ import { search } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import {
+  DateInput,
   EmptyState,
   ErrorState,
   Pagination,
@@ -93,12 +93,12 @@ export default function MeetingsList() {
           onChange={(value) => setParam({ search: value })}
           placeholder="Search by title"
         />
-        <Input
-          type="date"
+        <DateInput
           value={date}
           onChange={(event) => setParam({ date: event.target.value })}
-          className="w-full sm:w-44"
+          placeholder="Any date"
           aria-label="Filter by date"
+          className="sm:w-48"
         />
         {hasFilters ? (
           <Button variant="ghost" size="sm" onClick={() => setParam({ search: '', date: '' })}>

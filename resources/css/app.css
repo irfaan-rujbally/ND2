@@ -95,6 +95,78 @@
     @apply overflow-x-auto;
     -webkit-overflow-scrolling: touch;
   }
+
+  /*
+   * Date and time fields on iOS.
+   *
+   * Safari on iPhone gives these inputs an intrinsic size of its own and lets it
+   * beat the `h-11 w-full` on the shared Input component. The result was a Date
+   * of Birth box roughly two and a half times the height of the text fields
+   * either side of it, and slightly wider than its grid cell -- see the
+   * membership application form, where it sits next to National ID Number.
+   *
+   * Two separate causes, so two rules:
+   *
+   *   1. `appearance: none` drops the native bevel and the intrinsic width that
+   *      came with it. `min-width: 0` then lets `w-full` actually shrink the
+   *      field to its column, which a flex item will not do by default.
+   *   2. WebKit wraps the value in a shadow element that carries its own margin
+   *      and min-height. That is what was making the box tall, and no amount of
+   *      height on the input itself overrides it -- it has to be reset directly.
+   *
+   * `align-items: center` is needed because the Input is `display: flex`: with
+   * the shadow element's margin gone the value would otherwise sit at the top.
+   *
+   * Applies to every date and time field in the app -- the membership form,
+   * MyDetails, the meeting form's start and end times, the meetings filter and
+   * the public badge lookup -- rather than being patched per field.
+   */
+  input[type='date'],
+  input[type='time'],
+  input[type='datetime-local'],
+  input[type='month'] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-width: 0;
+    align-items: center;
+  }
+
+  input[type='date']::-webkit-date-and-time-value,
+  input[type='time']::-webkit-date-and-time-value,
+  input[type='datetime-local']::-webkit-date-and-time-value,
+  input[type='month']::-webkit-date-and-time-value {
+    margin: 0;
+    min-height: 0;
+    /* Left, not the WebKit default of centre, so the value lines up with the
+       text in every other field. */
+    text-align: left;
+  }
+
+  /*
+   * Desktop Chrome hides the picker button until the field is hovered or
+   * focused, which reads as "this is just an empty box". Keeping it visible is
+   * the only affordance a date field has, since it can carry no placeholder.
+   * iOS renders no indicator at all, so this changes nothing there.
+   */
+  input[type='date']::-webkit-calendar-picker-indicator,
+  input[type='time']::-webkit-calendar-picker-indicator,
+  input[type='datetime-local']::-webkit-calendar-picker-indicator {
+    opacity: 0.55;
+    cursor: pointer;
+  }
+
+  input[type='date']::-webkit-calendar-picker-indicator:hover,
+  input[type='time']::-webkit-calendar-picker-indicator:hover,
+  input[type='datetime-local']::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+  }
+
+  /* The indicator is a black glyph, invisible on the dark theme's card. */
+  .dark input[type='date']::-webkit-calendar-picker-indicator,
+  .dark input[type='time']::-webkit-calendar-picker-indicator,
+  .dark input[type='datetime-local']::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+  }
 }
 
 @layer utilities {

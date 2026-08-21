@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, Navigate, useLocation } from 'react-router-dom'
-import { LogIn, QrCode, ScanLine } from 'lucide-react'
+import { LogIn, QrCode, UserCircle } from 'lucide-react'
 import { useAuth } from '@/auth/AuthProvider'
 import { ThreeBackground } from '@/components/ThreeBackground'
 import { Button } from '@/components/ui/button'
@@ -86,6 +86,14 @@ export default function Login() {
                 </div>
               ) : null}
 
+              {/*
+                Says who this form is for, mirroring the "Are you a member?"
+                caption below the divider — a member landing here would otherwise
+                try their own details against the staff sign-in and be told only
+                that they were wrong.
+              */}
+              <p className="text-center text-xs text-muted-foreground">For Admins only</p>
+
               <Field id="email" label="Email" error={errors.email?.[0]} required>
                 <Input
                   id="email"
@@ -128,7 +136,8 @@ export default function Login() {
             {/*
               This form is the staff sign-in. Members have their own, so the two
               ways in for them are kept together below the divider: collect a
-              badge without signing in at all, or sign in to check into a meeting.
+              badge without signing in at all, or sign in to the portal — which is
+              also where checking in to a meeting happens.
             */}
             <div className="mt-6 space-y-2 border-t pt-5">
               <p className="mb-2 text-center text-xs text-muted-foreground">
@@ -142,8 +151,8 @@ export default function Login() {
               </Button>
               <Button asChild variant="outline" size="lg" className="w-full">
                 <Link to="/check-in">
-                  <ScanLine className="size-4" />
-                  Check in to a meeting
+                  <UserCircle className="size-4" />
+                  Member&apos;s Portal
                 </Link>
               </Button>
             </div>

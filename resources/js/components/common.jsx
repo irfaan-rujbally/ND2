@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { AlertCircle, ChevronLeft, ChevronRight, Inbox, Loader2, Search, X } from 'lucide-react'
+import {
+  AlertCircle,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Inbox,
+  Loader2,
+  Search,
+  X,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -62,6 +71,49 @@ export function SearchInput({ value, onChange, placeholder = 'Search…', delay 
         >
           <X className="size-3.5" />
         </button>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * A date field that says what it is when it is empty.
+ *
+ * `<input type="date">` accepts no placeholder, and the browsers disagree about
+ * what an empty one looks like: desktop Chrome prints its own "dd/mm/yyyy",
+ * Firefox something similar, and Safari on iOS renders nothing whatsoever. In a
+ * filter row with no visible label that last one is just a blank box — there was
+ * no way to tell the meetings date filter from a broken input.
+ *
+ * So the native text is hidden while the field is empty and unfocused, and this
+ * draws its own placeholder over it instead. `text-transparent` rather than a
+ * vendor pseudo-element because `::-webkit-datetime-edit` does not exist in
+ * Firefox, and hiding the text by colour works everywhere.
+ *
+ * Focus restores the real thing, via `peer`: someone typing a date on a keyboard
+ * has to see the digits land, and a half-typed date fires no change event, so
+ * leaving it transparent would mean typing into an invisible field.
+ */
+export function DateInput({ value, onChange, placeholder = 'Any date', className, ...props }) {
+  const isEmpty = !value
+
+  return (
+    // Full width by default so it drops into a form grid; the caller narrows it
+    // where it sits in a filter row.
+    <div className={cn('relative w-full', className)}>
+      <CalendarDays className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
+      <Input
+        type="date"
+        value={value}
+        onChange={onChange}
+        className={cn('peer pl-9', isEmpty && 'text-transparent focus:text-foreground')}
+        aria-label={props['aria-label'] ?? placeholder}
+        {...props}
+      />
+      {isEmpty ? (
+        <span className="pointer-events-none absolute left-9 top-1/2 -translate-y-1/2 text-base text-muted-foreground peer-focus:hidden sm:text-sm">
+          {placeholder}
+        </span>
       ) : null}
     </div>
   )
