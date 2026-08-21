@@ -26,7 +26,6 @@ const EMPTY = {
   last_name: '',
   email: '',
   password: '',
-  owner: false,
   office_id: '',
 }
 
@@ -74,7 +73,6 @@ export default function UserForm() {
         last_name: record.last_name ?? '',
         email: record.email ?? '',
         password: '',
-        owner: Boolean(record.owner),
         office_id: record.office_id != null ? String(record.office_id) : '',
       })
       setHydrated(true)
@@ -87,7 +85,6 @@ export default function UserForm() {
         first_name: form.first_name,
         last_name: form.last_name,
         email: form.email,
-        owner: form.owner,
         office_id: form.office_id ? Number(form.office_id) : null,
       }
 
@@ -213,16 +210,6 @@ export default function UserForm() {
                   </SelectContent>
                 </Select>
               </Field>
-
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.owner}
-                  onChange={(event) => setForm((c) => ({ ...c, owner: event.target.checked }))}
-                  className="size-4 rounded border-input accent-primary"
-                />
-                Account owner
-              </label>
 
               <div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
                 {isEdit && !isSelf ? (

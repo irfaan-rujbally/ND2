@@ -17,7 +17,6 @@ class UserResource extends Resource
             'first_name',
             'last_name',
             'email',
-            'owner',
             'office_id',
             // Writable so admins can set a password on create/update. Reads are
             // masked by the User model's $hidden, verified against the live API.
@@ -57,7 +56,6 @@ class UserResource extends Resource
             'first_name' => ['required', 'max:25'],
             'last_name'  => ['required', 'max:25'],
             'office_id'  => ['required', 'exists:offices,id'],
-            'owner'      => ['nullable', 'boolean'],
         ];
     }
 

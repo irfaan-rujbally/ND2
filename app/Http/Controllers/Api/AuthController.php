@@ -79,7 +79,6 @@ class AuthController extends Controller
             'last_name'  => $user->last_name,
             'name'       => $user->name,
             'email'      => $user->email,
-            'owner'      => (bool) $user->owner,
             'office_id'  => $user->office_id,
             'office'     => $user->office ? [
                 'id'   => $user->office->id,

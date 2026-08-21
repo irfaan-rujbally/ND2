@@ -4,7 +4,6 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Plus, UserCog } from 'lucide-react'
 import { search } from '@/lib/api'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import {
@@ -117,7 +116,6 @@ export default function UsersList() {
                     </SortableHead>
                   </TableHead>
                   <TableHead>Office</TableHead>
-                  <TableHead>Role</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -136,9 +134,6 @@ export default function UsersList() {
                     </TableCell>
                     <TableCell className="text-muted-foreground">{user.email}</TableCell>
                     <TableCell className="text-muted-foreground">{user.office?.name || '-'}</TableCell>
-                    <TableCell>
-                      {user.owner ? <Badge>Owner</Badge> : <Badge variant="secondary">Member</Badge>}
-                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -161,7 +156,6 @@ export default function UsersList() {
                     </Link>
                     <p className="truncate text-xs text-muted-foreground">{user.email}</p>
                   </div>
-                  {user.owner ? <Badge>Owner</Badge> : null}
                 </CardContent>
               </Card>
             ))}
