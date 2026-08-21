@@ -23,6 +23,9 @@ import MembersList from '@/pages/members/MembersList'
 import MemberForm from '@/pages/members/MemberForm'
 import MemberView from '@/pages/members/MemberView'
 import BadgeSheet from '@/pages/members/BadgeSheet'
+import AnnouncementsList from '@/pages/announcements/AnnouncementsList'
+import AnnouncementForm from '@/pages/announcements/AnnouncementForm'
+import AnnouncementView from '@/pages/announcements/AnnouncementView'
 import MeetingsList from '@/pages/meetings/MeetingsList'
 import MeetingForm from '@/pages/meetings/MeetingForm'
 import Attendance from '@/pages/meetings/Attendance'
@@ -33,6 +36,7 @@ import CheckIn from '@/pages/member/CheckIn'
 import MyDetails from '@/pages/member/MyDetails'
 import MyMeetings from '@/pages/member/MyMeetings'
 import News from '@/pages/member/News'
+import MemberAnnouncements from '@/pages/member/Announcements'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -124,6 +128,7 @@ function App() {
       >
         <Route index element={<MyDetails />} />
         <Route path="meetings" element={<MyMeetings />} />
+        <Route path="announcements" element={<MemberAnnouncements />} />
         <Route path="news" element={<News />} />
       </Route>
 
@@ -161,6 +166,13 @@ function App() {
           <Route path="create" element={<RequireAdmin><MemberForm /></RequireAdmin>} />
           <Route path=":id" element={<RequireAdmin><MemberView /></RequireAdmin>} />
           <Route path=":id/edit" element={<RequireAdmin><MemberForm /></RequireAdmin>} />
+        </Route>
+
+        <Route path="announcements">
+          <Route index element={<RequireAdmin><AnnouncementsList /></RequireAdmin>} />
+          <Route path="create" element={<RequireAdmin><AnnouncementForm /></RequireAdmin>} />
+          <Route path=":id" element={<RequireAdmin><AnnouncementView /></RequireAdmin>} />
+          <Route path=":id/edit" element={<RequireAdmin><AnnouncementForm /></RequireAdmin>} />
         </Route>
 
         <Route path="users">

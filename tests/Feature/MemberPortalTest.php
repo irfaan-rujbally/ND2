@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Announcement;
+use App\Models\AnnouncementRecipient;
 use App\Models\Meeting;
 use App\Models\MeetingHasMember;
 use App\Models\Member;
@@ -181,13 +183,38 @@ class MemberPortalTest extends TestCase
     public static function staffEndpoints(): array
     {
         return [
-            'stats'          => ['GET', '/api/stats'],
-            'staff identity' => ['GET', '/api/auth/me'],
-            'member search'  => ['POST', '/api/members/search'],
-            'member export'  => ['GET', '/api/members/export'],
-            'meeting search' => ['POST', '/api/meetings/search'],
-            'user search'    => ['POST', '/api/users/search'],
+            'stats'                => ['GET', '/api/stats'],
+            'staff identity'       => ['GET', '/api/auth/me'],
+            'member search'        => ['POST', '/api/members/search'],
+            'member export'        => ['GET', '/api/members/export'],
+            'meeting search'       => ['POST', '/api/meetings/search'],
+            'user search'          => ['POST', '/api/users/search'],
+            // The staff side of announcements: writing them and reading them
+            // back. The recipient list is covered separately below, because it
+            // needs a real announcement for the route binding to resolve.
+            'announcement search'  => ['POST', '/api/announcements/search'],
+            'announcement mutate'  => ['POST', '/api/announcements/mutate'],
         ];
+    }
+
+    /**
+     * The recipient list is the most sensitive announcement endpoint -- it
+     * carries every member's name and email address -- so it gets its own test
+     * rather than a row in the table above. With an id that does not exist, route
+     * model binding answers 404 before the guard is ever consulted, which would
+     * have passed for the wrong reason.
+     */
+    public function test_a_member_token_cannot_read_an_announcements_recipient_list(): void
+    {
+        $announcement = Announcement::create([
+            'title'     => 'Assemblée générale',
+            'office_id' => $this->office->id,
+        ]);
+
+        $this->getJson(
+            "/api/announcements/{$announcement->id}/recipients",
+            $this->auth($this->signIn())
+        )->assertForbidden();
     }
 
     /**
@@ -211,6 +238,136 @@ class MemberPortalTest extends TestCase
     public function test_the_portal_needs_a_token_at_all(): void
     {
         $this->getJson('/api/member/profile')->assertUnauthorized();
+    }
+
+    /* ---------------------------------------------------------------- */
+    /* Announcements                                                     */
+    /* ---------------------------------------------------------------- */
+
+    private function announcement(array $attributes = []): Announcement
+    {
+        return Announcement::create(array_merge([
+            'title'     => 'Assemblée générale',
+            'office_id' => $this->office->id,
+        ], $attributes));
+    }
+
+    public function test_a_member_reads_their_office_announcements_newest_first(): void
+    {
+        $this->announcement([
+            'title'      => 'Older notice',
+            'created_at' => now()->subDays(3),
+        ]);
+        $this->announcement([
+            'title'       => 'Newest notice',
+            'description' => "Ligne une.\nLigne deux.",
+            'created_at'  => now(),
+        ]);
+        $this->announcement([
+            'title'      => 'Middle notice',
+            'created_at' => now()->subDay(),
+        ]);
+
+        $response = $this->getJson('/api/member/announcements', $this->auth($this->signIn()));
+
+        $response->assertOk();
+
+        $this->assertSame(
+            ['Newest notice', 'Middle notice', 'Older notice'],
+            array_column($response->json('data'), 'title')
+        );
+
+        // The line breaks the office typed survive to the portal, as they do to
+        // the email.
+        $this->assertSame("Ligne une.\nLigne deux.", $response->json('data.0.description'));
+        $this->assertSame(3, $response->json('meta.total'));
+    }
+
+    public function test_a_member_never_sees_another_offices_announcements(): void
+    {
+        $otherOffice = Office::create(['name' => 'Rodrigues']);
+
+        $this->announcement(['title' => 'Ours']);
+        $this->announcement(['title' => 'Theirs', 'office_id' => $otherOffice->id]);
+
+        $response = $this->getJson('/api/member/announcements', $this->auth($this->signIn()));
+
+        $response->assertOk();
+        $this->assertSame(['Ours'], array_column($response->json('data'), 'title'));
+    }
+
+    public function test_a_deleted_announcement_disappears_from_the_portal(): void
+    {
+        $this->announcement(['title' => 'Kept']);
+        $this->announcement(['title' => 'Withdrawn'])->delete();
+
+        $response = $this->getJson('/api/member/announcements', $this->auth($this->signIn()));
+
+        $response->assertOk();
+        $this->assertSame(['Kept'], array_column($response->json('data'), 'title'));
+    }
+
+    public function test_the_portal_exposes_the_notice_and_nothing_about_the_send(): void
+    {
+        $announcement = $this->announcement(['image_path' => 'announcement-images/poster.png']);
+
+        AnnouncementRecipient::create([
+            'announcement_id' => $announcement->id,
+            'member_id'       => $this->member->id,
+            'email'           => $this->member->email,
+            'sent_at'         => now(),
+        ]);
+
+        $response = $this->getJson('/api/member/announcements', $this->auth($this->signIn()));
+
+        $response->assertOk();
+
+        // Exactly these keys: no recipient list, no addresses, no send counts.
+        $this->assertSame(
+            ['id', 'title', 'description', 'image_url', 'created_at'],
+            array_keys($response->json('data.0'))
+        );
+
+        // The image is reachable by its public token, which is what lets the same
+        // URL work in the email.
+        $this->assertStringContainsString(
+            "/api/public/announcements/{$announcement->public_token}/image",
+            $response->json('data.0.image_url')
+        );
+    }
+
+    public function test_a_member_who_has_not_been_emailed_still_reads_the_announcement(): void
+    {
+        // The point of the portal: 4 members in 5 have no email address, and
+        // scoping this to announcement_recipients would leave them a blank page.
+        $this->member->email = null;
+        $this->member->save();
+
+        $this->announcement(['title' => 'For everyone']);
+
+        $response = $this->getJson(
+            '/api/member/announcements',
+            $this->auth($this->signIn($this->member->phone))
+        );
+
+        $response->assertOk();
+        $this->assertSame(['For everyone'], array_column($response->json('data'), 'title'));
+    }
+
+    public function test_a_member_with_no_office_sees_nothing_rather_than_everything(): void
+    {
+        $this->announcement(['title' => 'Bonne Terre only']);
+
+        $this->member->office_id = null;
+        $this->member->save();
+
+        $response = $this->getJson(
+            '/api/member/announcements',
+            $this->auth($this->signIn($this->member->phone))
+        );
+
+        $response->assertOk();
+        $this->assertSame([], $response->json('data'));
     }
 
     public function test_a_member_can_load_the_latest_facebook_posts(): void

@@ -188,6 +188,77 @@ export function memberDocumentUrl(memberId, kind) {
 }
 
 /**
+ * Multipart upload for an announcement's image. Returns the stored path, saved
+ * onto the announcement afterwards through a normal `mutate` — the same two-step
+ * shape as uploadMemberDocument.
+ */
+export async function uploadAnnouncementImage(file) {
+  const token = getToken()
+  const body = new FormData()
+  body.append('file', file)
+
+  const response = await fetch('/api/announcement-images', {
+    method: 'POST',
+    // No Content-Type header: the browser must set the multipart boundary.
+    headers: {
+      Accept: 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body,
+  })
+
+  const payload = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      setToken(null)
+      onUnauthenticated?.()
+    }
+    throw new ApiError(payload.message || `Upload failed (${response.status})`, {
+      status: response.status,
+      errors: payload.errors,
+    })
+  }
+
+  return payload.data
+}
+
+/**
+ * Every member who could receive this announcement, with what has already
+ * happened to each of them.
+ *
+ * One unpaginated response on purpose: "select all" has to mean every member
+ * matching the filters rather than the rows currently on screen, and the filters
+ * then run in the browser with no further requests. See
+ * AnnouncementRecipientsController for why this is not a `search('members')`.
+ */
+export function fetchAnnouncementRecipients(announcementId) {
+  return api.get(`/announcements/${announcementId}/recipients`)
+}
+
+/**
+ * The image URL for an announcement.
+ *
+ * Keyed on the announcement's public token rather than its id, and deliberately
+ * unauthenticated: the same URL has to load inside an email, where no bearer
+ * token can be presented.
+ *
+ * `v` is a cache-buster, and it is not optional. The response is served
+ * `immutable`, and the token stays the same when the image is replaced — so
+ * without it this screen would keep showing the picture the announcement used to
+ * have. `updated_at` moves on every save, which is exactly when the image can
+ * have changed. (The emailed copy of this URL uses a digest of the stored path
+ * instead; both are only cache keys, and the server ignores the parameter.)
+ */
+export function announcementImageUrl(announcement) {
+  if (!announcement?.public_token || !announcement?.image_path) return null
+
+  const version = encodeURIComponent(announcement.updated_at || '')
+
+  return `/api/public/announcements/${announcement.public_token}/image?v=${version}`
+}
+
+/**
  * Spreadsheet of every member matching `filters` — not just the page on screen.
  *
  * A plain link cannot be used: the API authenticates with a bearer token, which

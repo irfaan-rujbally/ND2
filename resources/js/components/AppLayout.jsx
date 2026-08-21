@@ -1,6 +1,16 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { CalendarDays, LayoutDashboard, LogOut, Menu, Moon, Sun, UserCog, Users } from 'lucide-react'
+import {
+  CalendarDays,
+  LayoutDashboard,
+  LogOut,
+  Megaphone,
+  Menu,
+  Moon,
+  Sun,
+  UserCog,
+  Users,
+} from 'lucide-react'
 import { useAuth } from '@/auth/AuthProvider'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetClose, SheetContent, SheetTrigger } from '@/components/ui/sheet'
@@ -18,6 +28,7 @@ const navigation = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/meetings', label: 'Meetings', icon: CalendarDays },
   { to: '/members', label: 'Members', icon: Users },
+  { to: '/announcements', label: 'Announcements', icon: Megaphone },
   { to: '/users', label: 'Users', icon: UserCog },
 ]
 

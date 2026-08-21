@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { CalendarCheck, LogOut, Newspaper, ScanLine, UserCircle } from 'lucide-react'
+import { CalendarCheck, LogOut, Megaphone, Newspaper, ScanLine, UserCircle } from 'lucide-react'
 
 import { useMemberAuth } from '@/auth/MemberAuthProvider'
 import { Button } from '@/components/ui/button'
@@ -24,6 +24,11 @@ import { cn } from '@/lib/utils'
 const navigation = [
   { to: '/my', label: 'My details', icon: UserCircle, end: true },
   { to: '/my/meetings', label: 'My meetings', icon: CalendarCheck },
+  /*
+   * Announcements before News: these come from the member's own office and are
+   * addressed to them, whereas News is the party's public Facebook feed.
+   */
+  { to: '/my/announcements', label: 'Announcements', icon: Megaphone },
   { to: '/my/news', label: 'News', icon: Newspaper },
 ]
 
@@ -56,8 +61,17 @@ export function MemberLayout() {
         </div>
       </header>
 
+      {/*
+        Two layouts, not one that shrinks.
+
+        On a phone the four labels do not fit -- the row scrolled sideways and the
+        last tab sat off-screen, so a member could not tell News existed. Below
+        `sm` the tabs are icons only and each takes an equal quarter of the width,
+        which both fits and gives a finger-sized target. From `sm` up the labels
+        return and the tabs go back to hugging their content on the left.
+      */}
       <nav className="border-b bg-background">
-        <div className="mx-auto flex max-w-3xl gap-6 overflow-x-auto px-4 sm:px-6">
+        <div className="mx-auto flex max-w-3xl px-4 sm:gap-6 sm:px-6">
 
           {navigation.map(({ to, label, icon: Icon, end }) => (
             <NavLink
@@ -67,20 +81,27 @@ export function MemberLayout() {
               className={({ isActive }) =>
                 cn(
                   /*
-                   * No horizontal padding: the tab's label and its active
-                   * underline then start exactly on the page's content edge, the
-                   * same one the cards below use. Spacing between tabs comes
-                   * from the row's gap instead.
+                   * No horizontal padding from `sm` up: the tab's label and its
+                   * active underline then start exactly on the page's content
+                   * edge, the same one the cards below use. Spacing between tabs
+                   * comes from the row's gap instead.
                    */
-                  'flex items-center gap-2 whitespace-nowrap border-b-2 py-3 text-sm font-medium transition-colors',
+                  'flex flex-1 items-center justify-center gap-2 whitespace-nowrap border-b-2 py-3',
+                  'text-sm font-medium transition-colors sm:flex-none sm:justify-start',
                   isActive
                     ? 'border-primary text-primary'
                     : 'border-transparent text-muted-foreground hover:text-foreground',
                 )
               }
             >
-              <Icon className="size-4" />
-              {label}
+              <Icon className="size-5 sm:size-4" />
+              {/*
+                sr-only rather than hidden: the icon alone is no accessible name,
+                so the label stays in the tree for a screen reader and is only
+                taken out of view. It is absolutely positioned while sr-only, so
+                it adds nothing to the tab's width.
+              */}
+              <span className="sr-only sm:not-sr-only">{label}</span>
             </NavLink>
           ))}
         </div>

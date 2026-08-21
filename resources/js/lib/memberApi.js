@@ -88,6 +88,9 @@ export const memberApi = {
   meetings: () => request('GET', '/meetings'),
   news: () => request('GET', '/news'),
 
+  /** Announcements from the member's own office, newest first. Read-only. */
+  announcements: () => request('GET', '/announcements'),
+
   /** Spends a scanned meeting code to record the member present. */
   checkIn: (meetingToken) => request('POST', '/check-in', { meeting_token: meetingToken }),
 }

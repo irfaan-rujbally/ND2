@@ -1,10 +1,13 @@
 <?php
 
+use App\Http\Controllers\Api\AnnouncementImageController;
+use App\Http\Controllers\Api\AnnouncementRecipientsController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\MemberDocumentController;
 use App\Http\Controllers\Api\MeetingParticipantsController;
 use App\Http\Controllers\Api\MemberExportController;
 use App\Http\Controllers\Api\PublicBadgeController;
+use App\Http\Controllers\Api\Member\AnnouncementsController as MemberAnnouncementsController;
 use App\Http\Controllers\Api\Member\AuthController as MemberAuthController;
 use App\Http\Controllers\Api\Member\CheckInController as MemberCheckInController;
 use App\Http\Controllers\Api\Member\MeetingsController as MemberMeetingsController;
@@ -40,6 +43,19 @@ Route::post('public/member-badge', PublicBadgeController::class)
     ->name('api.public.member-badge');
 
 /*
+ * An announcement's image, unauthenticated by necessity: this URL goes out
+ * inside an email, and no mail client will present a bearer token when it loads
+ * the picture. The 32-character public_token in the path is what stands in for
+ * the credentials -- the numeric id is never exposed, so nothing is enumerable.
+ *
+ * Not throttled: a single announcement mailed to five hundred members produces a
+ * burst of requests from the recipients' mail proxies, all of them legitimate,
+ * and a rate limit would blank the image for whoever opened it last.
+ */
+Route::get('public/announcements/{token}/image', [AnnouncementImageController::class, 'show'])
+    ->name('api.public.announcements.image');
+
+/*
 |--------------------------------------------------------------------------
 | Member portal
 |--------------------------------------------------------------------------
@@ -71,6 +87,11 @@ Route::prefix('member')->name('api.member.')->group(function () {
 
             Route::get('meetings', [MemberMeetingsController::class, 'index'])->name('meetings.index');
             Route::get('news', MemberNewsController::class)->name('news.index');
+
+            // Read-only. The staff resource is what writes and sends them; this
+            // returns the notice alone, never the recipient list.
+            Route::get('announcements', MemberAnnouncementsController::class)
+                ->name('announcements.index');
 
             // The check-in itself. Throttled: the meeting token is public, so
             // this is the one member route a stranger might try to hammer.
@@ -119,6 +140,23 @@ Route::middleware(['auth:sanctum', 'staff.only'])->group(function () {
 
     Rest::resource('users', \App\Rest\Controllers\UsersController::class)
         ->withSoftDeletes(['restore']);
+
+    // Multipart upload for an announcement's image; the resource below is JSON
+    // only, so it receives only the stored path.
+    Route::post('announcement-images', [AnnouncementImageController::class, 'store'])
+        ->name('api.announcement-images.store');
+
+    /*
+     * The recipient picker's data source. Registered before the resource so the
+     * literal 'recipients' segment is not read as part of a resource route, and
+     * kept outside it because it returns members joined to send status rather
+     * than announcements -- see AnnouncementRecipientsController.
+     */
+    Route::get('announcements/{announcement}/recipients', AnnouncementRecipientsController::class)
+        ->name('api.announcements.recipients');
+
+    Rest::resource('announcements', \App\Rest\Controllers\AnnouncementsController::class)
+        ->withSoftDeletes();
 
     Rest::resource('offices', \App\Rest\Controllers\OfficesController::class);
 });
