@@ -1,5 +1,13 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { CalendarCheck, LogOut, Megaphone, Newspaper, ScanLine, UserCircle } from 'lucide-react'
+import {
+  CalendarCheck,
+  LogOut,
+  Megaphone,
+  MessagesSquare,
+  Newspaper,
+  ScanLine,
+  UserCircle,
+} from 'lucide-react'
 
 import { useMemberAuth } from '@/auth/MemberAuthProvider'
 import { Button } from '@/components/ui/button'
@@ -15,8 +23,8 @@ import { cn } from '@/lib/utils'
  *
  * Intentionally not AppLayout: that one navigates to the dashboard, the member
  * register and the user admin, none of which a member may open. Rather than
- * hiding most of a staff menu, the portal has its own -- three destinations, all
- * of them the member's own business.
+ * hiding most of a staff menu, the portal has its own -- every destination in it
+ * is the member's own business.
  *
  * Built mobile first, because check-in happens on a phone at a door.
  */
@@ -29,6 +37,7 @@ const navigation = [
    * addressed to them, whereas News is the party's public Facebook feed.
    */
   { to: '/my/announcements', label: 'Announcements', icon: Megaphone },
+  { to: '/my/forum', label: 'Forum', icon: MessagesSquare },
   { to: '/my/news', label: 'News', icon: Newspaper },
 ]
 
@@ -64,11 +73,11 @@ export function MemberLayout() {
       {/*
         Two layouts, not one that shrinks.
 
-        On a phone the four labels do not fit -- the row scrolled sideways and the
-        last tab sat off-screen, so a member could not tell News existed. Below
-        `sm` the tabs are icons only and each takes an equal quarter of the width,
-        which both fits and gives a finger-sized target. From `sm` up the labels
-        return and the tabs go back to hugging their content on the left.
+        On a phone the labels do not fit -- the row scrolled sideways and the last
+        tab sat off-screen, so a member could not tell News existed. Below `sm` the
+        tabs are icons only and share the width equally, which both fits and gives
+        a finger-sized target. From `sm` up the labels return and the tabs go back
+        to hugging their content on the left.
       */}
       <nav className="border-b bg-background">
         <div className="mx-auto flex max-w-3xl px-4 sm:gap-6 sm:px-6">

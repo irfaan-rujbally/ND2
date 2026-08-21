@@ -37,6 +37,10 @@ import MyDetails from '@/pages/member/MyDetails'
 import MyMeetings from '@/pages/member/MyMeetings'
 import News from '@/pages/member/News'
 import MemberAnnouncements from '@/pages/member/Announcements'
+import MemberForumTopics from '@/pages/member/forum/ForumTopics'
+import MemberForumTopicView from '@/pages/member/forum/ForumTopicView'
+import ForumTopicsList from '@/pages/forum/ForumTopicsList'
+import ForumTopicView from '@/pages/forum/ForumTopicView'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -129,6 +133,8 @@ function App() {
         <Route index element={<MyDetails />} />
         <Route path="meetings" element={<MyMeetings />} />
         <Route path="announcements" element={<MemberAnnouncements />} />
+        <Route path="forum" element={<MemberForumTopics />} />
+        <Route path="forum/:id" element={<MemberForumTopicView />} />
         <Route path="news" element={<News />} />
       </Route>
 
@@ -173,6 +179,11 @@ function App() {
           <Route path="create" element={<RequireAdmin><AnnouncementForm /></RequireAdmin>} />
           <Route path=":id" element={<RequireAdmin><AnnouncementView /></RequireAdmin>} />
           <Route path=":id/edit" element={<RequireAdmin><AnnouncementForm /></RequireAdmin>} />
+        </Route>
+
+        <Route path="forum">
+          <Route index element={<RequireAdmin><ForumTopicsList /></RequireAdmin>} />
+          <Route path=":id" element={<RequireAdmin><ForumTopicView /></RequireAdmin>} />
         </Route>
 
         <Route path="users">

@@ -6,6 +6,7 @@ import {
   LogOut,
   Megaphone,
   Menu,
+  MessagesSquare,
   Moon,
   Sun,
   UserCog,
@@ -29,6 +30,7 @@ const navigation = [
   { to: '/meetings', label: 'Meetings', icon: CalendarDays },
   { to: '/members', label: 'Members', icon: Users },
   { to: '/announcements', label: 'Announcements', icon: Megaphone },
+  { to: '/forum', label: 'Forum', icon: MessagesSquare },
   { to: '/users', label: 'Users', icon: UserCog },
 ]
 

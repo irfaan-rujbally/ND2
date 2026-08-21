@@ -91,6 +91,61 @@ export const memberApi = {
   /** Announcements from the member's own office, newest first. Read-only. */
   announcements: () => request('GET', '/announcements'),
 
+  /*
+   * The forum. `mine` narrows the list to what this member wrote; everything
+   * else is scoped to their office by the server.
+   */
+  forumTopics: ({ mine = false, search = '', page = 1 } = {}) =>
+    request('GET', `/forum/topics?${new URLSearchParams({
+      ...(mine ? { mine: '1' } : {}),
+      ...(search ? { search } : {}),
+      page: String(page),
+    })}`),
+
+  forumTopic: (id) => request('GET', `/forum/topics/${id}`),
+  createForumTopic: (values) => request('POST', '/forum/topics', values),
+  updateForumTopic: (id, values) => request('PATCH', `/forum/topics/${id}`, values),
+  deleteForumTopic: (id) => request('DELETE', `/forum/topics/${id}`),
+
+  createForumComment: (topicId, values) => request('POST', `/forum/topics/${topicId}/comments`, values),
+  updateForumComment: (id, values) => request('PATCH', `/forum/comments/${id}`, values),
+  deleteForumComment: (id) => request('DELETE', `/forum/comments/${id}`),
+
   /** Spends a scanned meeting code to record the member present. */
   checkIn: (meetingToken) => request('POST', '/check-in', { meeting_token: meetingToken }),
+}
+
+/**
+ * Multipart upload for a forum image, returning the stored path to send with the
+ * topic or comment. Cannot go through `request()` above: that sets a JSON
+ * Content-Type, and the browser has to set the multipart boundary itself.
+ */
+export async function uploadMemberForumImage(file) {
+  const token = getMemberToken()
+  const body = new FormData()
+  body.append('file', file)
+
+  const response = await fetch('/api/member/forum/images', {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body,
+  })
+
+  const payload = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      setMemberToken(null)
+      onMemberUnauthenticated?.()
+    }
+    throw new ApiError(payload.message || `Upload failed (${response.status})`, {
+      status: response.status,
+      errors: payload.errors,
+    })
+  }
+
+  return payload.data
 }

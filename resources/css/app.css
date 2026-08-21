@@ -252,6 +252,20 @@
     animation: border-orbit 4s linear infinite;
   }
 
+  /*
+   * Keeps the two-colour ring but parks the lights. Used where the border
+   * repeats -- a member's own comments down a thread -- because a dozen of them
+   * travelling at once is more movement than anyone wants to read past.
+   *
+   * A fixed start angle rather than the animation's initial 0deg, chosen so the
+   * red and blue arcs land on opposite corners and the ring reads as two colours
+   * at a glance instead of one with a smudge.
+   */
+  .orbit-still {
+    animation: none;
+    --border-angle: 135deg;
+  }
+
   /* A moving light in someone's peripheral vision is exactly what this setting
      is for; the border stays, it just stops travelling. */
   @media (prefers-reduced-motion: reduce) {

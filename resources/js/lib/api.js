@@ -223,6 +223,70 @@ export async function uploadAnnouncementImage(file) {
   return payload.data
 }
 
+/*
+ * The forum, from the office's side.
+ *
+ * Not `search('forum-topics', …)`: these are plain controllers rather than a
+ * Rest resource, because what the moderation screen needs is not the shape of the
+ * table -- it sees the content of posts that have already been moderated, which
+ * the member portal hides. See App\Http\Controllers\Api\Forum\TopicsController.
+ */
+export const forum = {
+  topics: ({ search = '', filter = 'all', page = 1 } = {}) => {
+    const query = new URLSearchParams({ filter, page: String(page) })
+    if (search) query.set('search', search)
+    return api.get(`/forum/topics?${query}`)
+  },
+
+  topic: (id) => api.get(`/forum/topics/${id}`),
+
+  /** Starts a topic as the office rather than under the administrator's name. */
+  createTopic: (values) => api.post('/forum/topics', values),
+  comment: (topicId, values) => api.post(`/forum/topics/${topicId}/comments`, values),
+
+  /*
+   * Moderation, which is not deletion: it hides the post from members and leaves
+   * them a tombstone saying an administrator removed it. `unmoderate` puts it
+   * back. Nothing here erases anyone's words.
+   */
+  moderateTopic: (id) => api.post(`/forum/topics/${id}/moderate`),
+  unmoderateTopic: (id) => api.delete(`/forum/topics/${id}/moderate`),
+  moderateComment: (id) => api.post(`/forum/comments/${id}/moderate`),
+  unmoderateComment: (id) => api.delete(`/forum/comments/${id}/moderate`),
+}
+
+/** Multipart upload for a forum image posted by the office. */
+export async function uploadForumImage(file) {
+  const token = getToken()
+  const body = new FormData()
+  body.append('file', file)
+
+  const response = await fetch('/api/forum/images', {
+    method: 'POST',
+    // No Content-Type: the browser must set the multipart boundary.
+    headers: {
+      Accept: 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body,
+  })
+
+  const payload = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      setToken(null)
+      onUnauthenticated?.()
+    }
+    throw new ApiError(payload.message || `Upload failed (${response.status})`, {
+      status: response.status,
+      errors: payload.errors,
+    })
+  }
+
+  return payload.data
+}
+
 /**
  * Every member who could receive this announcement, with what has already
  * happened to each of them.

@@ -3,6 +3,10 @@
 use App\Http\Controllers\Api\AnnouncementImageController;
 use App\Http\Controllers\Api\AnnouncementRecipientsController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\Forum\TopicsController as StaffForumTopicsController;
+use App\Http\Controllers\Api\ForumImageController;
+use App\Http\Controllers\Api\Member\Forum\CommentsController as MemberForumCommentsController;
+use App\Http\Controllers\Api\Member\Forum\TopicsController as MemberForumTopicsController;
 use App\Http\Controllers\Api\MemberDocumentController;
 use App\Http\Controllers\Api\MeetingParticipantsController;
 use App\Http\Controllers\Api\MemberExportController;
@@ -56,6 +60,20 @@ Route::get('public/announcements/{token}/image', [AnnouncementImageController::c
     ->name('api.public.announcements.image');
 
 /*
+ * Forum images, token-addressed for a different reason: the same picture has to
+ * render for a member holding a portal token and for an administrator holding a
+ * staff token, and those are separate guards. One unauthenticated URL keyed on 32
+ * random characters serves both, rather than the endpoint existing twice with the
+ * two sessions each able to reach only half the forum. The files themselves stay
+ * on the private disk.
+ */
+Route::get('public/forum/topics/{token}/image', [ForumImageController::class, 'topicImage'])
+    ->name('api.public.forum.topics.image');
+
+Route::get('public/forum/comments/{token}/image', [ForumImageController::class, 'commentImage'])
+    ->name('api.public.forum.comments.image');
+
+/*
 |--------------------------------------------------------------------------
 | Member portal
 |--------------------------------------------------------------------------
@@ -92,6 +110,30 @@ Route::prefix('member')->name('api.member.')->group(function () {
             // returns the notice alone, never the recipient list.
             Route::get('announcements', MemberAnnouncementsController::class)
                 ->name('announcements.index');
+
+            /*
+             * The forum. A member reads their own office's topics, starts one,
+             * and edits or deletes what they wrote. Nothing here can reach
+             * another office or another member's post -- the controllers prove
+             * ownership on every write, because members hold no role for a
+             * policy to consult.
+             */
+            Route::prefix('forum')->name('forum.')->group(function () {
+                Route::post('images', [ForumImageController::class, 'store'])->name('images.store');
+
+                Route::get('topics', [MemberForumTopicsController::class, 'index'])->name('topics.index');
+                Route::post('topics', [MemberForumTopicsController::class, 'store'])->name('topics.store');
+                Route::get('topics/{topic}', [MemberForumTopicsController::class, 'show'])->name('topics.show');
+                Route::patch('topics/{topic}', [MemberForumTopicsController::class, 'update'])->name('topics.update');
+                Route::delete('topics/{topic}', [MemberForumTopicsController::class, 'destroy'])->name('topics.destroy');
+
+                Route::post('topics/{topic}/comments', [MemberForumCommentsController::class, 'store'])
+                    ->name('comments.store');
+                Route::patch('comments/{comment}', [MemberForumCommentsController::class, 'update'])
+                    ->name('comments.update');
+                Route::delete('comments/{comment}', [MemberForumCommentsController::class, 'destroy'])
+                    ->name('comments.destroy');
+            });
 
             // The check-in itself. Throttled: the meeting token is public, so
             // this is the one member route a stranger might try to hammer.
@@ -157,6 +199,36 @@ Route::middleware(['auth:sanctum', 'staff.only'])->group(function () {
 
     Rest::resource('announcements', \App\Rest\Controllers\AnnouncementsController::class)
         ->withSoftDeletes();
+
+    /*
+     * Forum moderation. Plain controllers rather than a Rest::resource because
+     * what these return is not the shape of the table: the office sees the
+     * content of posts it has already moderated, which the member portal hides.
+     *
+     * There is no route here that edits or deletes a member's words. Removal is
+     * `moderate`, which hides the post and leaves its author a tombstone; the
+     * matching DELETE puts it back.
+     */
+    Route::prefix('forum')->name('api.forum.')->group(function () {
+        Route::post('images', [ForumImageController::class, 'store'])->name('images.store');
+
+        Route::get('topics', [StaffForumTopicsController::class, 'index'])->name('topics.index');
+        Route::post('topics', [StaffForumTopicsController::class, 'store'])->name('topics.store');
+        Route::get('topics/{topic}', [StaffForumTopicsController::class, 'show'])->name('topics.show');
+
+        Route::post('topics/{topic}/comments', [StaffForumTopicsController::class, 'comment'])
+            ->name('topics.comment');
+
+        Route::post('topics/{topic}/moderate', [StaffForumTopicsController::class, 'moderate'])
+            ->name('topics.moderate');
+        Route::delete('topics/{topic}/moderate', [StaffForumTopicsController::class, 'restore'])
+            ->name('topics.unmoderate');
+
+        Route::post('comments/{comment}/moderate', [StaffForumTopicsController::class, 'moderateComment'])
+            ->name('comments.moderate');
+        Route::delete('comments/{comment}/moderate', [StaffForumTopicsController::class, 'restoreComment'])
+            ->name('comments.unmoderate');
+    });
 
     Rest::resource('offices', \App\Rest\Controllers\OfficesController::class);
 });

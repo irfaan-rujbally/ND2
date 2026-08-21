@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasPublicImageToken;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Str;
 
 /**
  * A notice an administrator writes once and then emails to a chosen set of
@@ -19,7 +19,7 @@ use Illuminate\Support\Str;
  */
 class Announcement extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, HasPublicImageToken, SoftDeletes;
 
     protected $table = 'announcements';
 
@@ -28,18 +28,13 @@ class Announcement extends Model
         'updated_at' => 'datetime',
     ];
 
-    /**
-     * The token that makes the image URL work inside an email. Minted on create
-     * for the same reason meetings mint theirs: the URL may be sent out the
-     * moment the record is saved.
-     */
     protected static function booted(): void
     {
-        static::creating(function (self $announcement) {
-            if (blank($announcement->public_token)) {
-                $announcement->public_token = static::freshPublicToken();
-            }
+        // Mints public_token on create and refuses to let it be rewritten -- the
+        // emailed image URL depends on it never changing.
+        static::bootPublicImageToken();
 
+        static::creating(function (self $announcement) {
             /*
              * Stamped from the session, overwriting anything the request carried:
              * accepting it from the client would let one user file an
@@ -51,27 +46,6 @@ class Announcement extends Model
                 $announcement->created_by = auth()->id();
             }
         });
-
-        /*
-         * Write-once, for the same reason Meeting::booted protects qr_token:
-         * Model::unguard() is global in this app, so an edit form echoing the
-         * field back unchanged would otherwise be able to rotate it and break
-         * the image in every email already delivered.
-         */
-        static::updating(function (self $announcement) {
-            if ($announcement->isDirty('public_token') && filled($announcement->getOriginal('public_token'))) {
-                $announcement->public_token = $announcement->getOriginal('public_token');
-            }
-        });
-    }
-
-    public static function freshPublicToken(): string
-    {
-        do {
-            $token = Str::random(32);
-        } while (static::withTrashed()->where('public_token', $token)->exists());
-
-        return $token;
     }
 
     public function office(): BelongsTo
