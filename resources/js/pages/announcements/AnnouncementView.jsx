@@ -122,11 +122,26 @@ export default function AnnouncementView() {
         includes: [{ relation: 'author' }],
         limit: 10,
       }).then((response) => response.data[0] ?? null),
+    // Drives its own polling: queued_count is the thing being watched, so this
+    // query cannot depend on a value only it can refresh. v5 hands the callback
+    // the query, so it reads its own latest data.
+    refetchInterval: (query) => ((query.state.data?.queued_count ?? 0) > 0 ? 3000 : false),
   })
+
+  /*
+   * Sending is a queue worker's job now, not the request's, so the response to
+   * "Send" arrives with every recipient still outstanding and the screen has to
+   * watch them land. Polling stops the moment queued_count reaches zero -- that
+   * count excludes attempts that failed for good, so a permanent bounce ends the
+   * refresh rather than sustaining it for ever.
+   */
+  const queued = announcementQuery.data?.queued_count ?? 0
+  const pollWhileSending = queued > 0 ? 3000 : false
 
   const recipientsQuery = useQuery({
     queryKey: ['announcement-recipients', id],
     queryFn: () => fetchAnnouncementRecipients(id),
+    refetchInterval: pollWhileSending,
   })
 
   const rows = recipientsQuery.data?.data ?? []
@@ -288,7 +303,9 @@ export default function AnnouncementView() {
               <dd>
                 {announcement.sent_count ?? 0} member
                 {(announcement.sent_count ?? 0) === 1 ? '' : 's'}
-                {announcement.pending_count ? ` (${announcement.pending_count} queued)` : ''}
+                {/* queued_count, not pending_count: the latter also counts the
+                    ones that failed for good, which are not queued at all. */}
+                {announcement.queued_count ? ` (${announcement.queued_count} queued)` : ''}
               </dd>
             </div>
           </dl>

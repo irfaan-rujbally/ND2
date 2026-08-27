@@ -39,6 +39,7 @@ class AnnouncementResource extends Resource
              */
             'sent_count',
             'pending_count',
+            'queued_count',
             'last_sent_at',
             'created_at',
             'updated_at',
@@ -107,6 +108,14 @@ class AnnouncementResource extends Resource
             ->withCount([
                 'recipients as sent_count'    => fn ($q) => $q->whereNotNull('sent_at'),
                 'recipients as pending_count' => fn ($q) => $q->whereNull('sent_at'),
+                /*
+                 * Narrower than pending_count, which also counts the attempts
+                 * that failed for good. This one is "still in the worker's
+                 * hands", which is what the detail screen polls on: counting a
+                 * permanent bounce as outstanding would leave it refreshing for
+                 * ever.
+                 */
+                'recipients as queued_count' => fn ($q) => $q->whereNull('sent_at')->whereNull('error'),
             ])
             ->withMax('recipients as last_sent_at', 'sent_at')
             ->where('announcements.office_id', $request->user()->office_id);

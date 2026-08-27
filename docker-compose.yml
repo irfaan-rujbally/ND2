@@ -42,6 +42,36 @@ services:
     depends_on:
     - db
     - cache
+  # Runs the queued jobs (see app/Jobs). Until this existed QUEUE_CONNECTION was
+  # `sync`, which meant every job ran inline in the web request that created it:
+  # an announcement to a four-hundred-member office signed and posted four
+  # hundred emails, and every notification signed and posted a push, before the
+  # response returned.
+  #
+  # --tries=1 on purpose. Both jobs catch their own failures and record them --
+  # on the recipient row, in the log -- because that is what made them behave the
+  # same on `sync`. A retry would not fix anything they record, and would re-send
+  # to the addresses and devices that already succeeded.
+  #
+  # --max-time recycles the process hourly. A queue worker is long-lived PHP: it
+  # holds the code it booted with, so a deploy needs `queue:restart` and this
+  # caps how long a forgotten one can serve stale code.
+  queue:
+    build: './etc/infrastructure/php'
+    image: nd2-php
+    container_name: crm_queue
+    restart: always
+    volumes:
+    - ./etc/.bashrc:/root/.bashrc
+    - .:/var/www/crm/
+    working_dir: /var/www/crm/
+    command: php artisan queue:work --tries=1 --max-time=3600 --sleep=3
+    links:
+    - db
+    - cache
+    depends_on:
+    - db
+    - cache
   web:
     #image: nginx:stable
     build: './etc/infrastructure/nginx'

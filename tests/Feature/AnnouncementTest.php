@@ -75,6 +75,51 @@ class AnnouncementTest extends TestCase
         ]);
     }
 
+    // ------------------------------------------------------------------ counts
+
+    /**
+     * queued_count is what the detail screen polls on while a worker is getting
+     * through a send, so it has to mean "still outstanding" and nothing else. A
+     * recipient that failed for good is pending but not queued: counting it here
+     * would leave the screen refreshing until someone navigated away.
+     */
+    public function test_queued_count_excludes_recipients_that_failed_for_good(): void
+    {
+        Sanctum::actingAs($this->admin);
+
+        $announcement = $this->announcement();
+        $delivered = $this->member('Sent', 'sent@example.com', $this->office);
+        $failed = $this->member('Failed', 'failed@example.com', $this->office);
+        $waiting = $this->member('Waiting', 'waiting@example.com', $this->office);
+
+        AnnouncementRecipient::create([
+            'announcement_id' => $announcement->id, 'member_id' => $delivered->id,
+            'email' => $delivered->email, 'sent_at' => now(),
+        ]);
+        AnnouncementRecipient::create([
+            'announcement_id' => $announcement->id, 'member_id' => $failed->id,
+            'email' => $failed->email, 'error' => 'Mailbox does not exist',
+        ]);
+        AnnouncementRecipient::create([
+            'announcement_id' => $announcement->id, 'member_id' => $waiting->id,
+            'email' => $waiting->email,
+        ]);
+
+        $response = $this->postJson('/api/announcements/search', [
+            'search' => ['filters' => [['field' => 'id', 'operator' => '=', 'value' => $announcement->id]]],
+        ])->assertOk();
+
+        $row = $response->json('data.0');
+
+        $this->assertSame(1, $row['sent_count']);
+
+        // Both outstanding rows, bounce included.
+        $this->assertSame(2, $row['pending_count']);
+
+        // Only the one a worker may still deliver.
+        $this->assertSame(1, $row['queued_count']);
+    }
+
     // ------------------------------------------------------------------ create
 
     public function test_an_admin_creates_an_announcement_and_it_is_stamped(): void
