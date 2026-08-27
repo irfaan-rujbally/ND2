@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Jobs\SendPushNotification;
 use App\Models\ActivityNotification;
 use App\Models\Member;
 use App\Models\User;
@@ -49,6 +50,12 @@ class ActivityNotifier
     private static function create(array $attributes): void
     {
         $notification = ActivityNotification::create($attributes);
-        PushService::send($notification);
+
+        // Queued, not sent here: the fan-out helpers above call this once per
+        // recipient, and each push is EC signing plus a blocking request to the
+        // provider. On QUEUE_CONNECTION=sync this still runs inline, so nothing
+        // changes until a worker exists -- it just stops being a rewrite when
+        // one does.
+        SendPushNotification::dispatch($notification);
     }
 }
