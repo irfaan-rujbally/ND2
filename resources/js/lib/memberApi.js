@@ -98,10 +98,11 @@ export const memberApi = {
   notifications: () => request('GET', '/notifications'),
   readNotification: (id) => request('PATCH', `/notifications/${id}/read`),
   readAllNotifications: () => request('POST', '/notifications/read-all'),
+  deleteNotification: (id) => request('DELETE', `/notifications/${id}`),
+  clearNotifications: () => request('DELETE', '/notifications'),
   pushKey: () => request('GET', '/push/key'),
   savePushSubscription: (subscription) => request('POST', '/push/subscriptions', subscription),
   deletePushSubscription: (endpoint) => request('DELETE', '/push/subscriptions', { endpoint }),
-  testPush: () => request('POST', '/push/test'),
 
   /*
    * The forum. `mine` narrows the list to what this member wrote; everything

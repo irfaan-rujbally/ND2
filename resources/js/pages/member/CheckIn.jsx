@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import {
-  ArrowLeft,
   CheckCircle2,
   Info,
   LogIn,
   LogOut,
   QrCode,
+  ShieldCheck,
   UserCircle,
 } from 'lucide-react'
 
@@ -34,6 +34,7 @@ import { cn, formatDate, formatTimeRange } from '@/lib/utils'
  */
 export default function CheckIn() {
   const { member, isAuthenticated, isLoading, signIn, signOut, mustChangePassword } = useMemberAuth()
+  const location = useLocation()
 
   const [form, setForm] = useState({ identifier: '', password: '' })
   const [errors, setErrors] = useState({})
@@ -136,26 +137,6 @@ export default function CheckIn() {
           <CardContent className="p-6 sm:p-8">{children}</CardContent>
         </Card>
 
-        {/*
-          Only while signed out. It is the way back for a member who landed here
-          from the staff login; once they are signed in it points at a form they
-          have no use for, and "Sign out" inside the card is the exit they want.
-          Hidden during the initial token check too, so it does not flash in and
-          straight back out again.
-        */}
-        {!isAuthenticated && !isLoading && (
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="mt-4 w-full text-white hover:bg-white/10 hover:text-white"
-          >
-            <Link to="/login">
-              <ArrowLeft className="size-4" />
-              Back to login
-            </Link>
-          </Button>
-        )}
       </div>
     </div>
   )
@@ -206,12 +187,38 @@ export default function CheckIn() {
           Sign in as member
         </Button>
 
-        <p className="text-center text-xs text-muted-foreground">
-          Just need your badge?{' '}
-          <Link to="/badge" className="font-medium text-primary hover:underline">
-            Get your QR code
-          </Link>
-        </p>
+        {/*
+          Everything that is not "sign in as a member" sits below the divider,
+          the same shape the staff form uses. Neither is a step of this one:
+          collecting a badge needs no account at all, and the admin form is a
+          different audience entirely.
+
+          Only rendered while signed out, because this whole branch is. That is
+          also why `location.state` is forwarded to /admin: a signed-out member
+          of staff following a bookmark arrives here with the page they wanted in
+          it, and /admin returns them there once they sign in.
+        */}
+        <div className="space-y-4 border-t pt-4">
+          <div className="space-y-2">
+            <p className="text-center text-xs text-muted-foreground">Just need your badge?</p>
+            <Button asChild variant="outline" className="w-full">
+              <Link to="/badge">
+                <QrCode className="size-4" />
+                Get QR code
+              </Link>
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-center text-xs text-muted-foreground">Are you an admin?</p>
+            <Button asChild variant="outline" className="w-full">
+              <Link to="/admin" state={location.state}>
+                <ShieldCheck className="size-4" />
+                Admin&apos;s Portal
+              </Link>
+            </Button>
+          </div>
+        </div>
       </form>,
     )
   }

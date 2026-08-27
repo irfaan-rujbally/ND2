@@ -7,8 +7,6 @@ use App\Models\Member;
 use App\Models\PushSubscription;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use App\Models\ActivityNotification;
-use App\Support\PushService;
 
 class PushSubscriptionsController extends Controller
 {
@@ -48,29 +46,6 @@ class PushSubscriptionsController extends Controller
         PushSubscription::where('recipient_type', $type)->where('recipient_id', $id)
             ->where('endpoint_hash', hash('sha256', $data['endpoint']))->delete();
         return response()->json(null, 204);
-    }
-
-    public function test(Request $request): JsonResponse
-    {
-        [$type, $id] = $this->recipient($request);
-        $notification = ActivityNotification::create([
-            'recipient_type' => $type,
-            'recipient_id' => $id,
-            'type' => 'push_test',
-            'title' => 'Phone notifications are working',
-            'message' => 'This is a test notification from Nouveaux Démocrates.',
-            'url' => $type === 'member' ? '/my' : '/',
-        ]);
-        $result = PushService::send($notification);
-
-        if ($result['sent'] === 0) {
-            return response()->json([
-                'message' => $result['reasons'][0] ?? 'The push provider did not accept the notification.',
-                'delivery' => $result,
-            ], 503);
-        }
-
-        return response()->json(['message' => 'Test notification accepted by the push provider.', 'delivery' => $result]);
     }
 
     private function recipient(Request $request): array

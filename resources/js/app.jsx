@@ -66,7 +66,17 @@ function FullPageSpinner() {
   )
 }
 
-/** Blocks a route until the stored token has been verified against the API. */
+/**
+ * Blocks a route until the stored token has been verified against the API.
+ *
+ * Sends the visitor to /login, which is the members' form, not the staff one at
+ * /admin. That looks backwards for a staff guard and is deliberate: `/` is the
+ * installed app's start_url, so this redirect is what almost every cold launch
+ * hits, and almost every cold launch is a member. The path they wanted rides
+ * along in `state.from`, and the "Admin Access" link on that screen forwards it
+ * to /admin, so a member of staff following a bookmark still lands where they
+ * were going once they sign in.
+ */
 function RequireAuth({ children }) {
   const { isAuthenticated, isLoading } = useAuth()
   const location = useLocation()
@@ -88,14 +98,14 @@ function RequireAdmin({ children }) {
 }
 
 /**
- * Guards the member portal. Sends an unauthenticated visitor to /check-in rather
- * than /login: that is the members' sign-in, and /login is the staff one.
+ * Guards the member portal. /login is the members' sign-in; the staff form lives
+ * at /admin and would be a dead end for them.
  */
 function RequireMember({ children }) {
   const { isAuthenticated, isLoading } = useMemberAuth()
 
   if (isLoading) return <FullPageSpinner />
-  if (!isAuthenticated) return <Navigate to="/check-in" replace />
+  if (!isAuthenticated) return <Navigate to="/login" replace />
 
   return children
 }
@@ -109,14 +119,23 @@ function LegacyAttendanceRedirect() {
 function App() {
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
+      {/*
+        Members at /login, staff at /admin. The members' form is the one an
+        unauthenticated visitor lands on, because that is who almost everyone
+        opening the installed app is; the staff form is a named detour reached
+        from the "Admin Access" link on it.
+      */}
+      <Route path="/login" element={<CheckIn />} />
+      <Route path="/admin" element={<Login />} />
 
       {/* Public: a member proves who they are and collects their own badge. */}
       <Route path="/badge" element={<PublicBadge />} />
 
       {/*
-        Public because a member arriving at a meeting has no session yet. The
-        page itself signs them in before it will scan anything.
+        The same screen as /login, kept because this path is on the meeting
+        posters, in the member layout's "Check in" button, and in links already
+        sent to members. Public because a member arriving at a meeting has no
+        session yet; the page itself signs them in before it will scan anything.
       */}
       <Route path="/check-in" element={<CheckIn />} />
 

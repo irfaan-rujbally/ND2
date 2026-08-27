@@ -31,6 +31,23 @@ class NotificationsController extends Controller
         return response()->json(null, 204);
     }
 
+    public function destroy(Request $request, ActivityNotification $notification): JsonResponse
+    {
+        // 404 rather than 403 on someone else's row: the id is sequential and
+        // guessable, and a 403 would confirm the notification exists.
+        abort_unless($this->owns($request, $notification), 404);
+        $notification->delete();
+
+        return response()->json(null, 204);
+    }
+
+    public function destroyAll(Request $request): JsonResponse
+    {
+        $this->query($request)->delete();
+
+        return response()->json(null, 204);
+    }
+
     private function query(Request $request)
     {
         $type = $request->user() instanceof \App\Models\Member ? 'member' : 'user';

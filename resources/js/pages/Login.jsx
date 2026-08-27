@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, Navigate, useLocation } from 'react-router-dom'
-import { LogIn, QrCode, UserCircle } from 'lucide-react'
+import { LogIn, UserCircle } from 'lucide-react'
 import { useAuth } from '@/auth/AuthProvider'
 import { ThreeBackground } from '@/components/ThreeBackground'
 import { Button } from '@/components/ui/button'
@@ -134,23 +134,16 @@ export default function Login() {
             </form>
 
             {/*
-              This form is the staff sign-in. Members have their own, so the two
-              ways in for them are kept together below the divider: collect a
-              badge without signing in at all, or sign in to the portal — which is
-              also where checking in to a meeting happens.
+              This form is the staff sign-in, reached from the member form rather
+              than landed on, so all it owes a member who took a wrong turn is the
+              way back. Collecting a badge is offered there, where they started.
             */}
             <div className="mt-6 space-y-2 border-t pt-5">
               <p className="mb-2 text-center text-xs text-muted-foreground">
                 Are you a member?
               </p>
               <Button asChild variant="outline" size="lg" className="w-full">
-                <Link to="/badge">
-                  <QrCode className="size-4" />
-                  Get QR code
-                </Link>
-              </Button>
-              <Button asChild variant="outline" size="lg" className="w-full">
-                <Link to="/check-in">
+                <Link to="/login">
                   <UserCircle className="size-4" />
                   Member&apos;s Portal
                 </Link>
