@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\MemberDocumentController;
 use App\Http\Controllers\Api\MeetingParticipantsController;
 use App\Http\Controllers\Api\MemberExportController;
 use App\Http\Controllers\Api\PublicBadgeController;
+use App\Http\Controllers\Api\PublicMemberSignupController;
 use App\Http\Controllers\Api\Member\AnnouncementsController as MemberAnnouncementsController;
 use App\Http\Controllers\Api\Member\AuthController as MemberAuthController;
 use App\Http\Controllers\Api\Member\CheckInController as MemberCheckInController;
@@ -43,13 +44,27 @@ Route::post('auth/login', [AuthController::class, 'login'])
     ->name('api.auth.login');
 
 /*
- * The one unauthenticated endpoint: a member proves who they are with their
- * national ID and date of birth, and gets their own attendance badge back.
- * Throttled hard because those two facts are all that stand in front of it.
+ * A member proves who they are with their national ID and date of birth, and
+ * gets their own attendance badge back. Throttled hard because those two facts
+ * are all that stand in front of it.
  */
 Route::post('public/member-badge', PublicBadgeController::class)
     ->middleware('throttle:6,1')
     ->name('api.public.member-badge');
+
+/*
+ * The public membership application. Unauthenticated by definition -- an
+ * applicant has no account yet -- and the only unauthenticated route in the
+ * application that writes a row and a file.
+ *
+ * Throttled to three an hour per IP. An application is a thing a person fills in
+ * once, carefully, so a low ceiling costs a genuine applicant nothing while
+ * making the register an unattractive place to dump junk. What it produces is
+ * inert until staff approve it: see Member::isApproved().
+ */
+Route::post('public/member-signup', PublicMemberSignupController::class)
+    ->middleware('throttle:3,60')
+    ->name('api.public.member-signup');
 
 /*
  * An announcement's image, unauthenticated by necessity: this URL goes out

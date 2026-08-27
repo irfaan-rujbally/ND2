@@ -69,6 +69,52 @@ async function request(method, path, body) {
   return payload
 }
 
+/**
+ * The public membership application.
+ *
+ * Its own fetch rather than `request` above, for two reasons: the path is
+ * /api/public/..., not /api/member/..., and the body is multipart because the
+ * identity document travels with the form. Sending no token is the point --
+ * an applicant has no account yet -- and a 401 here must not clear anyone's
+ * session, so the unauthenticated handler is deliberately not wired in.
+ *
+ * Content-Type is never set by hand: the browser has to add the multipart
+ * boundary itself, and setting the header strips it.
+ */
+export async function submitMemberSignup(values) {
+  const form = new FormData()
+
+  Object.entries(values).forEach(([key, value]) => {
+    if (value === null || value === undefined || value === '') return
+
+    if (Array.isArray(value)) {
+      value.forEach((entry) => form.append(`${key}[]`, entry))
+      return
+    }
+
+    // Laravel reads "1"/"0" for booleans; `false` would arrive as the string
+    // "false" and validate as true.
+    form.append(key, typeof value === 'boolean' ? (value ? '1' : '0') : value)
+  })
+
+  const response = await fetch('/api/public/member-signup', {
+    method: 'POST',
+    headers: { Accept: 'application/json' },
+    body: form,
+  })
+
+  const payload = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    throw new ApiError(payload.message || `Request failed (${response.status})`, {
+      status: response.status,
+      errors: payload.errors,
+    })
+  }
+
+  return payload
+}
+
 export const memberApi = {
   get: (path) => request('GET', path),
   post: (path, body) => request('POST', path, body),

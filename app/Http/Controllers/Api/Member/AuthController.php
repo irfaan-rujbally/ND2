@@ -72,6 +72,24 @@ class AuthController extends Controller
             ]);
         }
 
+        /*
+         * Approval is checked after the password, never before. Refusing an
+         * unapproved member up front would answer "is there an application under
+         * this number?" to anyone who asked, which is the enumeration the public
+         * badge endpoint is careful to avoid; only someone who already proved the
+         * password learns their application is still waiting.
+         *
+         * The rate limiter is not hit here. The credentials were correct, and
+         * this is the applicant's own record -- locking them out for checking
+         * whether they have been approved yet would punish the one person
+         * entitled to ask.
+         */
+        if (! $member->isApproved()) {
+            throw ValidationException::withMessages([
+                'identifier' => 'Your membership application is still being reviewed. The office will be in touch once it has been approved.',
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey($request));
 
         $member->forceFill(['last_login_at' => now()])->saveQuietly();

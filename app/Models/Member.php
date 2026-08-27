@@ -30,6 +30,25 @@ class Member extends Model implements AuthenticatableContract
     /** The single ability a member portal token is granted. */
     public const PORTAL_ABILITY = 'member';
 
+    /**
+     * Whether the office has accepted this membership.
+     *
+     * Gates sign-in, and nothing else. An unapproved member is a real row that
+     * the register shows and staff can act on -- they simply cannot get into the
+     * portal, which is what keeps a stranger who filled in the public form out
+     * of the office's forum.
+     */
+    public function isApproved(): bool
+    {
+        return $this->approved_at !== null;
+    }
+
+    /** Applications waiting on the office, newest first is the caller's job. */
+    public function scopePendingApproval($query)
+    {
+        return $query->whereNull('approved_at');
+    }
+
     protected $table = 'members';
 
     /*
@@ -48,6 +67,20 @@ class Member extends Model implements AuthenticatableContract
         static::creating(function (self $member) {
             if (blank($member->qr_token)) {
                 $member->qr_token = static::freshQrToken();
+            }
+
+            /*
+             * A member entered by the office is approved by that act. Only a
+             * public application waits, and PublicMemberSignupController is what
+             * marks one as such -- so self_registered_at is the discriminator
+             * here, not the absence of approved_at.
+             *
+             * Without this, every member an administrator adds would be created
+             * unapproved and unable to sign in, which is the opposite of what
+             * the register means.
+             */
+            if ($member->approved_at === null && $member->self_registered_at === null) {
+                $member->approved_at = now();
             }
         });
 
@@ -124,6 +157,8 @@ class Member extends Model implements AuthenticatableContract
             'password'                  => 'hashed',
             'password_set_at'           => 'datetime',
             'last_login_at'             => 'datetime',
+            'approved_at'               => 'datetime',
+            'self_registered_at'        => 'datetime',
         ];
     }
 

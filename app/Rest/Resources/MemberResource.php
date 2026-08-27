@@ -42,9 +42,26 @@ class MemberResource extends Resource
             'documents_path',
             'documents_confirmed',
             'office_id',
+            /*
+             * Membership approval. Exposed read-only in practice: neither appears
+             * in rules(), createRules() or updateRules(), so a mutate cannot set
+             * them -- ApproveMembersAction is the only way in, and it records who
+             * decided. self_registered_at is what tells the register a row came
+             * from the public form rather than from an administrator.
+             */
+            'approved_at',
+            'approved_by',
+            'self_registered_at',
             'created_at',
             'updated_at',
             'deleted_at',
+        ];
+    }
+
+    public function actions(RestRequest $request): array
+    {
+        return [
+            \App\Rest\Actions\ApproveMembersAction::make(),
         ];
     }
 
@@ -58,7 +75,7 @@ class MemberResource extends Resource
 
     public function scopes(RestRequest $request): array
     {
-        return ['withTrashed', 'onlyTrashed', 'orderByAttendanceAddedAt', 'orderByMeetingsCount'];
+        return ['withTrashed', 'onlyTrashed', 'orderByAttendanceAddedAt', 'orderByMeetingsCount', 'pendingApproval'];
     }
 
     public function limits(RestRequest $request): array

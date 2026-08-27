@@ -17,7 +17,12 @@ use Illuminate\Contracts\Validation\ValidationRule;
  * straight through. Everything here is compared on digits only.
  *
  * Eight digits with no separators, no country code: that is what a Mauritian
- * mobile is, and 477 of the 483 numbers already on file are stored that way.
+ * mobile is, and every number currently on file is stored that way.
+ *
+ * Uniqueness compares the *last eight* digits, so a stored "+230 5712 3456" and
+ * a submitted "57123456" are recognised as one line. Anything less strict lets
+ * the same phone hold two memberships purely because one of them was written
+ * with its country code.
  *
  * The number also matters beyond contact: a member may sign in with it, and the
  * starting password is derived from it. A number shared by two members would let
@@ -70,18 +75,47 @@ class MobileNumber implements ValidationRule
             return;
         }
 
+        /*
+         * Compared entirely in PHP, on digits.
+         *
+         * This used to narrow in SQL first, with `where('phone', 'like', '%' .
+         * last seven digits)`. That silently defeated the rule for exactly the
+         * numbers it exists to catch: a stored "+230 5712 3456" does not *end*
+         * with "7123456", so the LIKE matched nothing and the digit comparison
+         * below never ran -- a duplicate written in another format went straight
+         * through, which is the one case the whole rule is for.
+         *
+         * The register is a few hundred rows and this runs on member writes and
+         * on the public application, neither a hot path, so reading the column
+         * and comparing properly is the right trade. Do not reintroduce a LIKE
+         * here unless the column itself is normalised first.
+         */
         $clash = Member::query()
             ->when($this->ignoreMemberId !== null, fn ($q) => $q->whereKeyNot($this->ignoreMemberId))
             ->whereNotNull('phone')
             ->where('phone', '!=', '')
-            // Narrow in SQL on the last seven digits, then compare exactly in
-            // PHP; the column holds mixed formats so LIKE alone is not decisive.
-            ->where('phone', 'like', '%'.substr($digits, -7))
-            ->get(['id', 'phone'])
-            ->contains(fn (Member $m) => preg_replace('/\D/', '', (string) $m->phone) === $digits);
+            ->pluck('phone')
+            ->contains(fn ($stored) => self::lastEightDigits($stored) === $digits);
 
         if ($clash) {
             $fail('This mobile number is already registered to another member.');
         }
+    }
+
+    /**
+     * The subscriber number: digits only, last eight.
+     *
+     * Last eight rather than the whole digit string, because a country code is a
+     * way of writing a number and not part of it -- "+230 5712 3456" is eleven
+     * digits and "57123456" is eight, and comparing them whole would call one
+     * phone two.
+     *
+     * A stored value with fewer than eight digits comes back whole and simply
+     * never matches, which is correct: the submitted value is already known to
+     * be exactly eight by the checks above.
+     */
+    private static function lastEightDigits(mixed $value): string
+    {
+        return substr((string) preg_replace('/\D/', '', (string) $value), -8);
     }
 }

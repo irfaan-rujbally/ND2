@@ -33,6 +33,7 @@ import Participants from '@/pages/meetings/Participants'
 import UsersList from '@/pages/users/UsersList'
 import UserForm from '@/pages/users/UserForm'
 import CheckIn from '@/pages/member/CheckIn'
+import SignUp from '@/pages/member/SignUp'
 import MyDetails from '@/pages/member/MyDetails'
 import MyMeetings from '@/pages/member/MyMeetings'
 import News from '@/pages/member/News'
@@ -127,6 +128,12 @@ function App() {
       */}
       <Route path="/login" element={<CheckIn />} />
       <Route path="/admin" element={<Login />} />
+
+      {/*
+        The public membership application. Sits beside /login rather than inside
+        the portal: whoever fills it in has no account yet, which is the point.
+      */}
+      <Route path="/signup" element={<SignUp />} />
 
       {/* Public: a member proves who they are and collects their own badge. */}
       <Route path="/badge" element={<PublicBadge />} />

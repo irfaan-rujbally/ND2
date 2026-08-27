@@ -7,6 +7,7 @@ import {
   LogOut,
   QrCode,
   ShieldCheck,
+  UserPlus,
   UserCircle,
 } from 'lucide-react'
 
@@ -199,6 +200,20 @@ export default function CheckIn() {
           it, and /admin returns them there once they sign in.
         */}
         <div className="space-y-4 border-t pt-4">
+          {/*
+            First of the three, because it is the only one for somebody who
+            cannot sign in at all -- the other two assume an existing member.
+          */}
+          <div className="space-y-2">
+            <p className="text-center text-xs text-muted-foreground">Not a member yet?</p>
+            <Button asChild variant="outline" className="w-full">
+              <Link to="/signup">
+                <UserPlus className="size-4" />
+                Sign up
+              </Link>
+            </Button>
+          </div>
+
           <div className="space-y-2">
             <p className="text-center text-xs text-muted-foreground">Just need your badge?</p>
             <Button asChild variant="outline" className="w-full">

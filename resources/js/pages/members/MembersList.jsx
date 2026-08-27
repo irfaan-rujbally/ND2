@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Download, Eye, Pencil, Plus, QrCode, Trash2, UserPlus } from 'lucide-react'
+import { Check, Clock, Download, Eye, Pencil, Plus, QrCode, Trash2, UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
-import { destroy, fetchMembersExport, search, stats as fetchStats } from '@/lib/api'
+import { destroy, fetchMembersExport, runAction, search, stats as fetchStats } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -49,10 +49,45 @@ function AttendanceBadge({ value }) {
   return <Badge variant={variant}>{value}%</Badge>
 }
 
+/**
+ * A member who applied through the public form and is still waiting.
+ *
+ * Shown next to the name rather than in a column of its own: it is the most
+ * important thing about the row while it is true, and nothing at all once the
+ * application has been dealt with.
+ */
+function PendingBadge() {
+  return (
+    <Badge variant="outline" className="gap-1 whitespace-nowrap border-amber-500/50 text-amber-700 dark:text-amber-400">
+      <Clock className="size-3" />
+      Pending
+    </Badge>
+  )
+}
+
 /** View / edit / delete, shared by the desktop row and the mobile card. */
-function RowActions({ member, onDelete, size = 'icon' }) {
+function RowActions({ member, onDelete, onApprove, approving, size = 'icon' }) {
+  const pending = !member.approved_at
+
   return (
     <>
+      {/*
+        Only while pending. An approve control on an approved member would either
+        do nothing or re-date somebody else's decision.
+      */}
+      {pending ? (
+        <Button
+          variant="ghost"
+          size={size}
+          className="text-emerald-700 hover:bg-emerald-500/10 hover:text-emerald-700 dark:text-emerald-400"
+          aria-label={`Approve ${fullName(member) || 'member'}`}
+          disabled={approving}
+          onClick={() => onApprove(member)}
+        >
+          {approving ? <Spinner className="size-4" /> : <Check className="size-4" />}
+          {size === 'sm' ? 'Approve' : null}
+        </Button>
+      ) : null}
       <Button asChild variant="ghost" size={size} aria-label={`View ${fullName(member) || 'member'}`}>
         <Link to={`/members/${member.id}`}>
           <Eye className="size-4" />
@@ -89,6 +124,7 @@ export default function MembersList() {
   const page = Number(params.get('page') || 1)
   const searchTerm = params.get('search') || ''
   const constituency = params.get('constituency') || ''
+  const onlyPending = params.get('pending') === '1'
   const sort = params.get('sort') || 'first_name'
   const direction = params.get('direction') || 'asc'
 
@@ -129,15 +165,28 @@ export default function MembersList() {
       ? { scopes: [{ name: 'orderByMeetingsCount', parameters: [direction] }] }
       : { sorts: [{ field: sort, direction }] }
 
+    /*
+     * Waiting applications come from the resource's pendingApproval scope rather
+     * than a filter on approved_at: the column is not declared writable or
+     * filterable, and a scope is what the API will accept. Merged with the
+     * ordering scope above rather than replacing it, so "pending, worst
+     * attendance first" is still a thing you can ask for.
+     */
+    const scopes = [
+      ...(ordering.scopes ?? []),
+      ...(onlyPending ? [{ name: 'pendingApproval', parameters: [] }] : []),
+    ]
+
     return {
       filters,
       ...ordering,
+      ...(scopes.length ? { scopes } : {}),
       includes: [{ relation: 'office' }],
       aggregates: [{ relation: 'meetings', type: 'count' }],
       page,
       limit: PER_PAGE,
     }
-  }, [searchTerm, constituency, sort, direction, page])
+  }, [searchTerm, constituency, sort, direction, page, onlyPending])
 
   const membersQuery = useQuery({
     queryKey: ['members', searchPayload],
@@ -147,6 +196,40 @@ export default function MembersList() {
 
   const statsQuery = useQuery({ queryKey: ['stats'], queryFn: fetchStats })
   const totalMeetings = statsQuery.data?.data?.total_meetings ?? 0
+
+  /*
+   * How many applications are waiting, asked separately from the list so the
+   * number is the same whatever page or filter is showing. Only `total` is used;
+   * the rows are the list's job.
+   *
+   * PER_PAGE and an explicit page, not `limit: 1`: MemberResource::limits()
+   * only permits 10/25/50/100, so a smaller limit is rejected outright and the
+   * response carries no paginator -- which is to say no `total`, and a badge
+   * stuck on zero.
+   */
+  const pendingQuery = useQuery({
+    queryKey: ['members-pending-count'],
+    queryFn: () =>
+      search('members', {
+        scopes: [{ name: 'pendingApproval', parameters: [] }],
+        limit: PER_PAGE,
+        page: 1,
+      }),
+  })
+  const pendingCount = pendingQuery.data?.total ?? 0
+
+  const approve = useMutation({
+    mutationFn: (member) =>
+      runAction('members', 'approve-members', {
+        filters: [{ field: 'id', operator: '=', value: member.id }],
+      }),
+    onSuccess: (result, member) => {
+      queryClient.invalidateQueries({ queryKey: ['members'] })
+      queryClient.invalidateQueries({ queryKey: ['members-pending-count'] })
+      toast.success(`${fullName(member) || 'Member'} approved. They can sign in now.`)
+    },
+    onError: (error) => toast.error(error.message),
+  })
 
   const remove = useMutation({
     mutationFn: (member) => destroy('members', [member.id]),
@@ -170,7 +253,7 @@ export default function MembersList() {
   })
 
   const rows = membersQuery.data?.data ?? []
-  const hasFilters = Boolean(searchTerm || constituency)
+  const hasFilters = Boolean(searchTerm || constituency || onlyPending)
   const onSort = (field, nextDirection) => setParam({ sort: field, direction: nextDirection })
 
   return (
@@ -220,8 +303,26 @@ export default function MembersList() {
             ))}
           </SelectContent>
         </Select>
+        {/*
+          Only offered when something is actually waiting, and it carries the
+          count: a filter for an empty set is a control that does nothing, and
+          the number is the reason anyone would press it.
+        */}
+        {pendingCount > 0 || onlyPending ? (
+          <Button
+            variant={onlyPending ? 'default' : 'outline'}
+            className="shrink-0 gap-2"
+            onClick={() => setParam({ pending: onlyPending ? '' : '1' })}
+          >
+            <Clock className="size-4" />
+            Pending
+            <Badge variant={onlyPending ? 'secondary' : 'outline'} className="tabular-nums">
+              {pendingCount}
+            </Badge>
+          </Button>
+        ) : null}
         {hasFilters ? (
-          <Button variant="ghost" size="sm" onClick={() => setParam({ search: '', constituency: '' })}>
+          <Button variant="ghost" size="sm" onClick={() => setParam({ search: '', constituency: '', pending: '' })}>
             Reset
           </Button>
         ) : null}
@@ -237,7 +338,9 @@ export default function MembersList() {
           title="No members found"
           description={
             hasFilters
-              ? 'Try a different search or reset the filters.'
+              ? onlyPending
+                ? 'No applications are waiting.'
+                : 'Try a different search or reset the filters.'
               : 'Add your first member to get started.'
           }
         >
@@ -289,12 +392,15 @@ export default function MembersList() {
                 {rows.map((member) => (
                   <TableRow key={member.id}>
                     <TableCell>
-                      <Link
-                        to={`/members/${member.id}`}
-                        className="font-medium text-primary hover:underline"
-                      >
-                        {member.first_name || 'Unnamed'}
-                      </Link>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link
+                          to={`/members/${member.id}`}
+                          className="font-medium text-primary hover:underline"
+                        >
+                          {member.first_name || 'Unnamed'}
+                        </Link>
+                        {member.approved_at ? null : <PendingBadge />}
+                      </div>
                     </TableCell>
                     <TableCell>{member.last_name || '-'}</TableCell>
                     <TableCell className="text-muted-foreground">{member.email || '-'}</TableCell>
@@ -305,7 +411,12 @@ export default function MembersList() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <RowActions member={member} onDelete={setPendingDelete} />
+                        <RowActions
+                          member={member}
+                          onDelete={setPendingDelete}
+                          onApprove={approve.mutate}
+                          approving={approve.isPending && approve.variables?.id === member.id}
+                        />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -320,12 +431,15 @@ export default function MembersList() {
               <Card key={member.id}>
                 <CardContent className="p-4 sm:p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <Link
-                      to={`/members/${member.id}`}
-                      className="min-w-0 font-semibold text-primary hover:underline"
-                    >
-                      {fullName(member) || 'Unnamed member'}
-                    </Link>
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <Link
+                        to={`/members/${member.id}`}
+                        className="min-w-0 font-semibold text-primary hover:underline"
+                      >
+                        {fullName(member) || 'Unnamed member'}
+                      </Link>
+                      {member.approved_at ? null : <PendingBadge />}
+                    </div>
                     <AttendanceBadge value={attendanceRate(member.meetings_count, totalMeetings)} />
                   </div>
                   <dl className="mt-3 space-y-1 text-sm">
@@ -349,7 +463,13 @@ export default function MembersList() {
                     ) : null}
                   </dl>
                   <div className="mt-3 flex gap-1 border-t pt-2">
-                    <RowActions member={member} onDelete={setPendingDelete} size="sm" />
+                    <RowActions
+                      member={member}
+                      onDelete={setPendingDelete}
+                      onApprove={approve.mutate}
+                      approving={approve.isPending && approve.variables?.id === member.id}
+                      size="sm"
+                    />
                   </div>
                 </CardContent>
               </Card>
