@@ -122,7 +122,7 @@ export function FileField({
   kind,
   value,
   fileName,
-  existingUrl,
+  onOpen,
   onUploaded,
   onCleared,
   required,
@@ -169,15 +169,20 @@ export function FileField({
         <div className="flex items-center gap-2 rounded-lg border bg-muted/40 p-3">
           <FileText className="size-4 shrink-0 text-muted-foreground" />
           <span className="min-w-0 flex-1 truncate text-sm">{fileName || 'Uploaded file'}</span>
-          {existingUrl ? (
-            <a
-              href={existingUrl}
-              target="_blank"
-              rel="noreferrer"
+          {/*
+            A button, not an anchor. The document route is behind auth:sanctum and
+            the token lives in localStorage, so a plain href navigates without it
+            and the viewer is bounced to the sign-in screen; the caller fetches it
+            with the token instead.
+          */}
+          {onOpen ? (
+            <button
+              type="button"
+              onClick={onOpen}
               className="shrink-0 text-xs font-medium text-primary hover:underline"
             >
               View
-            </a>
+            </button>
           ) : null}
           <Button
             type="button"

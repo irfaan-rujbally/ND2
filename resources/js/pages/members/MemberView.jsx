@@ -14,7 +14,7 @@ import {
   X,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { destroy, memberDocumentUrl, search, stats as fetchStats } from '@/lib/api'
+import { destroy, fetchMemberDocument, search, stats as fetchStats } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -30,7 +30,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState, ErrorState, PageHeader, Spinner } from '@/components/common'
 import { MemberQrPanel } from '@/components/qr-badge'
 import { constituencyLabel } from '@/lib/membership'
-import { formatDate, fullName, initials } from '@/lib/utils'
+import { formatDate, fullName, initials, openBlob } from '@/lib/utils'
 
 /** Years between a date of birth and today; null when the date is unusable. */
 function ageFromDateOfBirth(value) {
@@ -106,18 +106,41 @@ function YesNo({ value }) {
   )
 }
 
+/**
+ * Opens a member's CV or supporting documents.
+ *
+ * A button rather than the link this used to be: the route is behind
+ * auth:sanctum, the token is in localStorage, and a browser navigation carries
+ * no Authorization header -- so the old href arrived unauthenticated and
+ * redirectGuestsTo('/login') sent whoever clicked it to the sign-in screen.
+ */
 function DocumentLink({ memberId, kind, path, label }) {
+  const [opening, setOpening] = useState(false)
+
   if (!path) return null
+
+  const open = async () => {
+    setOpening(true)
+    try {
+      const { blob, filename } = await fetchMemberDocument(memberId, kind)
+      openBlob(blob, filename)
+    } catch (error) {
+      toast.error(error.message || 'Could not open the document.')
+    } finally {
+      setOpening(false)
+    }
+  }
+
   return (
-    <a
-      href={memberDocumentUrl(memberId, kind)}
-      target="_blank"
-      rel="noreferrer"
-      className="inline-flex items-center gap-2 text-primary hover:underline"
+    <button
+      type="button"
+      onClick={open}
+      disabled={opening}
+      className="inline-flex items-center gap-2 text-primary hover:underline disabled:opacity-60"
     >
-      <FileText className="size-4" />
+      {opening ? <Spinner className="size-4" /> : <FileText className="size-4" />}
       {label}
-    </a>
+    </button>
   )
 }
 

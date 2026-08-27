@@ -74,10 +74,17 @@ class MemberDocumentController extends Controller
 
         abort_if(blank($path) || ! Storage::disk('local')->exists($path), 404, 'Document not found.');
 
+        /*
+         * Disposition goes in the fourth argument, not the headers array. Passing
+         * ['Content-Disposition' => 'inline'] overwrote the one Laravel builds
+         * from $name, so the carefully derived filename never reached the client
+         * and a saved copy arrived called "documents" with no extension.
+         */
         return Storage::disk('local')->response(
             $path,
             $this->downloadName($member, $kind, $path),
-            ['Content-Disposition' => 'inline']
+            [],
+            'inline'
         );
     }
 

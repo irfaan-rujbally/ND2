@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { destroy, memberDocumentUrl, mutate, search } from '@/lib/api'
+import { destroy, fetchMemberDocument, mutate, search } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -30,7 +30,7 @@ import {
   HEARD_ABOUT_US,
   VOLUNTEER_INTERESTS,
 } from '@/lib/membership'
-import { humanizeValidationMessage } from '@/lib/utils'
+import { humanizeValidationMessage, openBlob } from '@/lib/utils'
 import { useAuth } from '@/auth/AuthProvider'
 
 const EMPTY = {
@@ -66,6 +66,20 @@ export default function MemberForm() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { user } = useAuth()
+
+  /*
+   * Fetched with the bearer token rather than linked to. The documents route is
+   * behind auth:sanctum, so a plain href sends no Authorization header and the
+   * viewer is redirected to the sign-in screen instead of shown the file.
+   */
+  const openDocument = async (kind) => {
+    try {
+      const { blob, filename } = await fetchMemberDocument(id, kind)
+      openBlob(blob, filename)
+    } catch (error) {
+      toast.error(error.message || 'Could not open the document.')
+    }
+  }
 
   /*
    * Radix Select calls onValueChange with its previous value when the controlled
@@ -530,7 +544,7 @@ export default function MemberForm() {
                   accept={DOCUMENT_ACCEPT.cv}
                   value={form.cv_path}
                   fileName={uploadNames.cv || form.cv_path?.split('/').pop()}
-                  existingUrl={isEdit && form.cv_path ? memberDocumentUrl(id, 'cv') : null}
+                  onOpen={isEdit && form.cv_path ? () => openDocument('cv') : null}
                   onUploaded={(uploaded) => {
                     set('cv_path')(uploaded.path)
                     setUploadNames((n) => ({ ...n, cv: uploaded.original_name }))
@@ -550,7 +564,7 @@ export default function MemberForm() {
                   accept={DOCUMENT_ACCEPT.documents}
                   value={form.documents_path}
                   fileName={uploadNames.documents || form.documents_path?.split('/').pop()}
-                  existingUrl={isEdit && form.documents_path ? memberDocumentUrl(id, 'documents') : null}
+                  onOpen={isEdit && form.documents_path ? () => openDocument('documents') : null}
                   onUploaded={(uploaded) => {
                     set('documents_path')(uploaded.path)
                     setUploadNames((n) => ({ ...n, documents: uploaded.original_name }))

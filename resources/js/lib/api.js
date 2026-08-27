@@ -184,8 +184,49 @@ export async function uploadMemberDocument(kind, file) {
   return payload.data
 }
 
-export function memberDocumentUrl(memberId, kind) {
-  return `/api/members/${memberId}/documents/${kind}`
+/**
+ * Fetches a member's CV or supporting documents as a blob.
+ *
+ * Not a plain `<a href>` to the route, which is what this used to be. That route
+ * carries `auth:sanctum`, the token lives in localStorage, and a browser
+ * navigation sends no Authorization header -- so the request arrived
+ * unauthenticated, and `redirectGuestsTo('/login')` turned "View documents" into
+ * a trip to the sign-in screen. The token has to travel on a fetch.
+ *
+ * Same shape as fetchMembersExport: binary on success, JSON on failure, and the
+ * filename read from Content-Disposition because the server names the download
+ * after the member.
+ */
+export async function fetchMemberDocument(memberId, kind) {
+  const token = getToken()
+
+  const response = await fetch(`/api/members/${memberId}/documents/${kind}`, {
+    headers: {
+      Accept: 'application/octet-stream',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  })
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      setToken(null)
+      onUnauthenticated?.()
+    }
+
+    const payload = await response.json().catch(() => ({}))
+    throw new ApiError(payload.message || `Could not open the document (${response.status})`, {
+      status: response.status,
+      errors: payload.errors,
+    })
+  }
+
+  const disposition = response.headers.get('Content-Disposition') || ''
+  const match = disposition.match(/filename="?([^"]+)"?/)
+
+  return {
+    blob: await response.blob(),
+    filename: match?.[1] || `${kind}-${memberId}`,
+  }
 }
 
 /**

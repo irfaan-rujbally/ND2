@@ -75,6 +75,35 @@ export function downloadBlob(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
+/**
+ * Shows a fetched file: a new tab where the browser allows one, a download where
+ * it does not.
+ *
+ * Both are needed. Opening a tab is what you want while reviewing somebody's ID
+ * against their record, but the object URL is created after an await, by which
+ * point the browser may no longer count this as a user gesture and will block
+ * the popup -- window.open then returns null and the file has to land as a
+ * download instead.
+ *
+ * The URL is revoked late, not immediately: a new tab still needs it after this
+ * function returns.
+ */
+export function openBlob(blob, filename) {
+  const url = URL.createObjectURL(blob)
+  const tab = window.open(url, '_blank', 'noopener,noreferrer')
+
+  if (!tab) {
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+  }
+
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+}
+
 export function fullName(record) {
   if (!record) return ''
   return [record.first_name, record.last_name].filter(Boolean).join(' ').trim()
