@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\Member\IncidentsController as MemberIncidentsContro
 use App\Http\Controllers\Api\Member\IncidentCommentsController as MemberIncidentCommentsController;
 use App\Http\Controllers\Api\IncidentCommentsController;
 use App\Http\Controllers\Api\NotificationsController;
+use App\Http\Controllers\Api\PushSubscriptionsController;
 use App\Http\Controllers\Api\Member\NewsController as MemberNewsController;
 use App\Http\Controllers\Api\Member\ProfileController as MemberProfileController;
 use App\Http\Controllers\Api\StatsController;
@@ -116,6 +117,9 @@ Route::prefix('member')->name('api.member.')->group(function () {
             Route::get('notifications', [NotificationsController::class, 'index'])->name('notifications.index');
             Route::patch('notifications/{notification}/read', [NotificationsController::class, 'read'])->name('notifications.read');
             Route::post('notifications/read-all', [NotificationsController::class, 'readAll'])->name('notifications.read-all');
+            Route::get('push/key', [PushSubscriptionsController::class, 'key'])->name('push.key');
+            Route::post('push/subscriptions', [PushSubscriptionsController::class, 'store'])->name('push.store');
+            Route::delete('push/subscriptions', [PushSubscriptionsController::class, 'destroy'])->name('push.destroy');
 
             // Read-only. The staff resource is what writes and sends them; this
             // returns the notice alone, never the recipient list.
@@ -218,6 +222,9 @@ Route::middleware(['auth:sanctum', 'staff.only'])->group(function () {
     Route::get('notifications', [NotificationsController::class, 'index'])->name('api.notifications.index');
     Route::patch('notifications/{notification}/read', [NotificationsController::class, 'read'])->name('api.notifications.read');
     Route::post('notifications/read-all', [NotificationsController::class, 'readAll'])->name('api.notifications.read-all');
+    Route::get('push/key', [PushSubscriptionsController::class, 'key'])->name('api.push.key');
+    Route::post('push/subscriptions', [PushSubscriptionsController::class, 'store'])->name('api.push.store');
+    Route::delete('push/subscriptions', [PushSubscriptionsController::class, 'destroy'])->name('api.push.destroy');
 
     /*
      * Forum moderation. Plain controllers rather than a Rest::resource because

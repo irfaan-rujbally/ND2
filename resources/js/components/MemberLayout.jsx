@@ -73,6 +73,9 @@ export function MemberLayout() {
                 list: memberApi.notifications,
                 read: memberApi.readNotification,
                 readAll: memberApi.readAllNotifications,
+                pushKey: memberApi.pushKey,
+                savePushSubscription: memberApi.savePushSubscription,
+                deletePushSubscription: memberApi.deletePushSubscription,
               }}
             />
 

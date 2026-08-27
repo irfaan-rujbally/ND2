@@ -98,6 +98,9 @@ export const memberApi = {
   notifications: () => request('GET', '/notifications'),
   readNotification: (id) => request('PATCH', `/notifications/${id}/read`),
   readAllNotifications: () => request('POST', '/notifications/read-all'),
+  pushKey: () => request('GET', '/push/key'),
+  savePushSubscription: (subscription) => request('POST', '/push/subscriptions', subscription),
+  deletePushSubscription: (endpoint) => request('DELETE', '/push/subscriptions', { endpoint }),
 
   /*
    * The forum. `mine` narrows the list to what this member wrote; everything

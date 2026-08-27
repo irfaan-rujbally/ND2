@@ -13,7 +13,7 @@ class ActivityNotifier
         if ($officeId === null) return;
 
         User::query()->where('office_id', $officeId)->pluck('id')->each(
-            fn ($id) => ActivityNotification::create([
+            fn ($id) => self::create([
                 'recipient_type' => 'user', 'recipient_id' => $id, 'type' => $type,
                 'title' => $title, 'message' => $message, 'url' => $url,
             ])
@@ -24,7 +24,7 @@ class ActivityNotifier
     {
         if ($memberId === null || ! Member::query()->whereKey($memberId)->exists()) return;
 
-        ActivityNotification::create([
+        self::create([
             'recipient_type' => 'member', 'recipient_id' => $memberId, 'type' => $type,
             'title' => $title, 'message' => $message, 'url' => $url,
         ]);
@@ -44,5 +44,11 @@ class ActivityNotifier
     {
         collect($memberIds)->unique()->reject(fn ($id) => (int) $id === (int) $exceptMemberId)
             ->each(fn ($id) => self::member((int) $id, $type, $title, $message, $url));
+    }
+
+    private static function create(array $attributes): void
+    {
+        $notification = ActivityNotification::create($attributes);
+        PushService::send($notification);
     }
 }

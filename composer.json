@@ -17,6 +17,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.9",
         "lomkit/laravel-rest-api": "^2.21",
+        "minishlink/web-push": "9.0",
         "spatie/laravel-permission": "^6.10"
     },
     "require-dev": {

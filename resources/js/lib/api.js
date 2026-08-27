@@ -382,4 +382,7 @@ export const notifications = {
   list: () => api.get('/notifications'),
   read: (id) => api.patch(`/notifications/${id}/read`),
   readAll: () => api.post('/notifications/read-all'),
+  pushKey: () => api.get('/push/key'),
+  savePushSubscription: (subscription) => api.post('/push/subscriptions', subscription),
+  deletePushSubscription: (endpoint) => api.delete('/push/subscriptions', { endpoint }),
 }

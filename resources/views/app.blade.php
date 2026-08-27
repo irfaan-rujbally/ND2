@@ -72,12 +72,8 @@
     {{-- The Facebook SDK renders its plugin dialogs into this element. --}}
     <div id="fb-root"></div>
 
-    {{--
-        Registered in production only. Locally there is no /build/assets — Vite
-        serves modules from its dev server — so the worker would cache nothing
-        while still adding a layer to debug through.
-    --}}
-    @production
+    {{-- Web Push requires an active service worker. Its cache allow-list only
+         includes hashed build assets, so registering locally is safe as well. --}}
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () {
@@ -89,6 +85,5 @@
             })
         }
     </script>
-    @endproduction
 </body>
 </html>
