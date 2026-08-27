@@ -233,11 +233,6 @@ export default function MemberView() {
       <div className="space-y-5">
         {/* ------------------------------------------------ At a glance */}
         <Card>
-          {/*
-            CardContent defaults to `pt-0` because it normally sits under a
-            CardHeader. This card has no header, so both breakpoints must restate
-            the padding — an unprefixed `p-6` alone cannot cancel `sm:pt-0`.
-          */}
           <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
             <div className="grid size-14 shrink-0 place-items-center rounded-full bg-primary/10 text-lg font-semibold text-primary">
               {initials(member.first_name, member.last_name)}

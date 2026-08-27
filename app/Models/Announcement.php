@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Support\ActivityNotifier;
 
 /**
  * A notice an administrator writes once and then emails to a chosen set of
@@ -46,6 +47,14 @@ class Announcement extends Model
                 $announcement->created_by = auth()->id();
             }
         });
+
+        static::created(fn (self $announcement) => ActivityNotifier::officeMembers(
+            $announcement->office_id,
+            'new_announcement',
+            'New announcement',
+            $announcement->title,
+            '/my/announcements'
+        ));
     }
 
     public function office(): BelongsTo

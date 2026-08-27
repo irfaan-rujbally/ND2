@@ -86,6 +86,7 @@ async function request(method, path, body) {
 export const api = {
   get: (path) => request('GET', path),
   post: (path, body) => request('POST', path, body),
+  patch: (path, body) => request('PATCH', path, body),
   delete: (path, body) => request('DELETE', path, body),
 }
 
@@ -371,3 +372,14 @@ export const auth = {
 }
 
 export const stats = () => api.get('/stats')
+
+export const incidentComments = {
+  list: (incidentId) => api.get(`/incidents/${incidentId}/comments`),
+  create: (incidentId, body) => api.post(`/incidents/${incidentId}/comments`, { body }),
+}
+
+export const notifications = {
+  list: () => api.get('/notifications'),
+  read: (id) => api.patch(`/notifications/${id}/read`),
+  readAll: () => api.post('/notifications/read-all'),
+}

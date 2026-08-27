@@ -41,6 +41,8 @@ import MemberForumTopics from '@/pages/member/forum/ForumTopics'
 import MemberForumTopicView from '@/pages/member/forum/ForumTopicView'
 import ForumTopicsList from '@/pages/forum/ForumTopicsList'
 import ForumTopicView from '@/pages/forum/ForumTopicView'
+import IncidentsList from '@/pages/incidents/IncidentsList'
+import MemberIncidents from '@/pages/member/Incidents'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -135,6 +137,7 @@ function App() {
         <Route path="announcements" element={<MemberAnnouncements />} />
         <Route path="forum" element={<MemberForumTopics />} />
         <Route path="forum/:id" element={<MemberForumTopicView />} />
+        <Route path="incidents" element={<MemberIncidents />} />
         <Route path="news" element={<News />} />
       </Route>
 
@@ -191,6 +194,8 @@ function App() {
           <Route path="create" element={<RequireAdmin><UserForm /></RequireAdmin>} />
           <Route path=":id/edit" element={<RequireAdmin><UserForm /></RequireAdmin>} />
         </Route>
+
+        <Route path="incidents" element={<RequireAdmin><IncidentsList /></RequireAdmin>} />
 
         <Route path="attendance/:id" element={<LegacyAttendanceRedirect />} />
         <Route path="*" element={<NotFound />} />

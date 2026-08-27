@@ -9,6 +9,7 @@ use App\Support\ForumPresenter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use App\Support\ActivityNotifier;
 
 /**
  * The forum from the office's side: watch it, moderate it, and post in it as the
@@ -121,6 +122,14 @@ class TopicsController extends Controller
             'image_path'  => $data['image_path'] ?? null,
         ]);
 
+        ActivityNotifier::officeMembers(
+            $request->user()->office_id,
+            'new_forum',
+            'New forum',
+            $topic->title,
+            "/my/forum/{$topic->id}"
+        );
+
         $topic->load('author')->loadCount('comments');
 
         return response()->json(
@@ -140,10 +149,22 @@ class TopicsController extends Controller
             'image_path' => ['nullable', 'string', 'max:255'],
         ]);
 
+        $participantIds = $topic->comments()
+            ->where('author_type', \App\Models\Member::class)
+            ->pluck('author_id');
+
         $comment = $topic->comments()->create([
             'body'       => $data['body'],
             'image_path' => $data['image_path'] ?? null,
         ]);
+
+        ActivityNotifier::members(
+            $participantIds,
+            'forum_participant_reply',
+            'New reply in a forum you are participating in',
+            $topic->title,
+            "/my/forum/{$topic->id}"
+        );
 
         $comment->load('author');
 

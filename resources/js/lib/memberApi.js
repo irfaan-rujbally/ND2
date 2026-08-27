@@ -91,6 +91,14 @@ export const memberApi = {
   /** Announcements from the member's own office, newest first. Read-only. */
   announcements: () => request('GET', '/announcements'),
 
+  incidents: () => request('GET', '/incidents'),
+  createIncident: (values) => request('POST', '/incidents', values),
+  incidentComments: (incidentId) => request('GET', `/incidents/${incidentId}/comments`),
+  createIncidentComment: (incidentId, body) => request('POST', `/incidents/${incidentId}/comments`, { body }),
+  notifications: () => request('GET', '/notifications'),
+  readNotification: (id) => request('PATCH', `/notifications/${id}/read`),
+  readAllNotifications: () => request('POST', '/notifications/read-all'),
+
   /*
    * The forum. `mine` narrows the list to what this member wrote; everything
    * else is scoped to their office by the server.

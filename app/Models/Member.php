@@ -7,10 +7,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\Access\Authorizable;
 use Illuminate\Auth\Authenticatable;
 use Laravel\Sanctum\HasApiTokens;
+use App\Support\ActivityNotifier;
 
 /**
  * A party member.
@@ -46,6 +48,20 @@ class Member extends Model implements AuthenticatableContract
         static::creating(function (self $member) {
             if (blank($member->qr_token)) {
                 $member->qr_token = static::freshQrToken();
+            }
+        });
+
+        static::created(fn (self $member) => ActivityNotifier::staff(
+            $member->office_id, 'member_created', 'Member created', $member->name, "/members/{$member->id}"
+        ));
+
+        static::updated(function (self $member) {
+            // Password/login bookkeeping should not generate an "edited" alert.
+            $meaningful = array_diff(array_keys($member->getChanges()), [
+                'password', 'password_set_at', 'last_login_at', 'remember_token', 'updated_at',
+            ]);
+            if ($meaningful) {
+                ActivityNotifier::staff($member->office_id, 'member_edited', 'Member edited', $member->name, "/members/{$member->id}");
             }
         });
     }
@@ -212,5 +228,10 @@ class Member extends Model implements AuthenticatableContract
         return $this->belongsToMany(Meeting::class, 'meeting_has_member', 'member_id', 'meeting_id')
             ->whereNull('meeting_has_member.deleted_at')
             ->withTimestamps();
+    }
+
+    public function incidents(): HasMany
+    {
+        return $this->hasMany(Incident::class);
     }
 }

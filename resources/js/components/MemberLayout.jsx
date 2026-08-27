@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import {
   CalendarCheck,
+  AlertTriangle,
   LogOut,
   Megaphone,
   MessagesSquare,
@@ -13,6 +14,8 @@ import { useMemberAuth } from '@/auth/MemberAuthProvider'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { cn } from '@/lib/utils'
+import { NotificationBell } from '@/components/notification-bell'
+import { memberApi } from '@/lib/memberApi'
 
 /*
  * Chrome for the member portal.
@@ -39,6 +42,7 @@ const navigation = [
    */
   { to: '/my/announcements', label: 'Announcements', icon: Megaphone },
   { to: '/my/forum', label: 'Forum', icon: MessagesSquare },
+  { to: '/my/incidents', label: 'Incidents', icon: AlertTriangle },
   { to: '/my/news', label: 'News', icon: Newspaper },
 ]
 
@@ -63,6 +67,14 @@ export function MemberLayout() {
               implementations cannot drift apart.
             */}
             <ThemeToggle />
+            <NotificationBell
+              queryKey={['member-notifications']}
+              notificationApi={{
+                list: memberApi.notifications,
+                read: memberApi.readNotification,
+                readAll: memberApi.readAllNotifications,
+              }}
+            />
 
             <Button variant="outline" size="sm" asChild>
               <NavLink to="/check-in">

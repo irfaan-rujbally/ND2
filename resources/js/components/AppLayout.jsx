@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   CalendarDays,
+  AlertTriangle,
   LayoutDashboard,
   LogOut,
   Megaphone,
@@ -23,6 +24,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { cn, initials } from '@/lib/utils'
+import { NotificationBell } from '@/components/notification-bell'
+import { notifications } from '@/lib/api'
 
 const navigation = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -30,6 +33,7 @@ const navigation = [
   { to: '/members', label: 'Members', icon: Users },
   { to: '/announcements', label: 'Announcements', icon: Megaphone },
   { to: '/forum', label: 'Forum', icon: MessagesSquare },
+  { to: '/incidents', label: 'Incidents', icon: AlertTriangle },
   { to: '/users', label: 'Users', icon: UserCog },
 ]
 
@@ -125,6 +129,7 @@ export function AppLayout() {
           </div>
 
           <ThemeToggle />
+          <NotificationBell queryKey={['staff-notifications']} notificationApi={notifications} />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

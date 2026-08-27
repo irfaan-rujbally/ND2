@@ -8,6 +8,7 @@ use App\Models\Member;
 use App\Support\ForumPresenter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Support\ActivityNotifier;
 
 /**
  * The forum, from a member's side: read the topics of their own office, start
@@ -102,6 +103,8 @@ class TopicsController extends Controller
             'description' => $data['description'] ?? null,
             'image_path'  => $data['image_path'] ?? null,
         ]);
+        ActivityNotifier::staff($member->office_id, 'forum_created', 'Forum topic created', $topic->title, "/forum/{$topic->id}");
+        ActivityNotifier::officeMembers($member->office_id, 'new_forum', 'New forum', $topic->title, "/my/forum/{$topic->id}", $member->id);
 
         $topic->load('author')->loadCount('comments');
 

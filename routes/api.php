@@ -15,6 +15,10 @@ use App\Http\Controllers\Api\Member\AnnouncementsController as MemberAnnouncemen
 use App\Http\Controllers\Api\Member\AuthController as MemberAuthController;
 use App\Http\Controllers\Api\Member\CheckInController as MemberCheckInController;
 use App\Http\Controllers\Api\Member\MeetingsController as MemberMeetingsController;
+use App\Http\Controllers\Api\Member\IncidentsController as MemberIncidentsController;
+use App\Http\Controllers\Api\Member\IncidentCommentsController as MemberIncidentCommentsController;
+use App\Http\Controllers\Api\IncidentCommentsController;
+use App\Http\Controllers\Api\NotificationsController;
 use App\Http\Controllers\Api\Member\NewsController as MemberNewsController;
 use App\Http\Controllers\Api\Member\ProfileController as MemberProfileController;
 use App\Http\Controllers\Api\StatsController;
@@ -105,6 +109,13 @@ Route::prefix('member')->name('api.member.')->group(function () {
 
             Route::get('meetings', [MemberMeetingsController::class, 'index'])->name('meetings.index');
             Route::get('news', MemberNewsController::class)->name('news.index');
+            Route::get('incidents', [MemberIncidentsController::class, 'index'])->name('incidents.index');
+            Route::post('incidents', [MemberIncidentsController::class, 'store'])->name('incidents.store');
+            Route::get('incidents/{incident}/comments', [MemberIncidentCommentsController::class, 'index'])->name('incidents.comments.index');
+            Route::post('incidents/{incident}/comments', [MemberIncidentCommentsController::class, 'store'])->name('incidents.comments.store');
+            Route::get('notifications', [NotificationsController::class, 'index'])->name('notifications.index');
+            Route::patch('notifications/{notification}/read', [NotificationsController::class, 'read'])->name('notifications.read');
+            Route::post('notifications/read-all', [NotificationsController::class, 'readAll'])->name('notifications.read-all');
 
             // Read-only. The staff resource is what writes and sends them; this
             // returns the notice alone, never the recipient list.
@@ -199,6 +210,14 @@ Route::middleware(['auth:sanctum', 'staff.only'])->group(function () {
 
     Rest::resource('announcements', \App\Rest\Controllers\AnnouncementsController::class)
         ->withSoftDeletes();
+
+    Rest::resource('incidents', \App\Rest\Controllers\IncidentsController::class)
+        ->withSoftDeletes();
+    Route::get('incidents/{incident}/comments', [IncidentCommentsController::class, 'index'])->name('api.incidents.comments.index');
+    Route::post('incidents/{incident}/comments', [IncidentCommentsController::class, 'store'])->name('api.incidents.comments.store');
+    Route::get('notifications', [NotificationsController::class, 'index'])->name('api.notifications.index');
+    Route::patch('notifications/{notification}/read', [NotificationsController::class, 'read'])->name('api.notifications.read');
+    Route::post('notifications/read-all', [NotificationsController::class, 'readAll'])->name('api.notifications.read-all');
 
     /*
      * Forum moderation. Plain controllers rather than a Rest::resource because

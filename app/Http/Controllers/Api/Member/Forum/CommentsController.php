@@ -9,6 +9,7 @@ use App\Models\Member;
 use App\Support\ForumPresenter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Support\ActivityNotifier;
 
 /**
  * Replies on a forum topic: post one, and edit or delete your own.
@@ -27,11 +28,19 @@ class CommentsController extends Controller
 
         $data = $request->validate($this->rules());
 
+        // Capture existing participants before inserting this reply. A member
+        // participates by having previously replied, not merely by viewing.
+        $participantIds = $topic->comments()
+            ->where('author_type', Member::class)
+            ->pluck('author_id');
+
         // The author is stamped from the session by the model.
         $comment = $topic->comments()->create([
             'body'       => $data['body'],
             'image_path' => $data['image_path'] ?? null,
         ]);
+        ActivityNotifier::staff($topic->office_id, 'forum_member_reply', 'Member replied on the forum', $topic->title, "/forum/{$topic->id}");
+        ActivityNotifier::members($participantIds, 'forum_participant_reply', 'New reply in a forum you are participating in', $topic->title, "/my/forum/{$topic->id}", $member->id);
 
         $comment->load('author');
 
