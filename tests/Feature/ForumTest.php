@@ -50,8 +50,6 @@ class ForumTest extends TestCase
         $this->otherMember = $this->makeMember('Chan', 'Li', '52528666', $this->office);
 
         $this->admin = new User();
-        // users.account_id is NOT NULL, a leftover of the PingCRM schema.
-        $this->admin->account_id = 1;
         $this->admin->first_name = 'Ops';
         $this->admin->last_name = 'Admin';
         $this->admin->email = 'admin@example.com';
@@ -382,6 +380,31 @@ class ForumTest extends TestCase
         $this->assertSoftDeleted('forum_comments', ['id' => $mine->id]);
     }
 
+    public function test_an_edited_comment_is_marked_as_edited(): void
+    {
+        $topic = $this->topic();
+        $comment = $this->comment($topic, $this->member, 'As posted');
+
+        $before = $this->getJson("/api/member/forum/topics/{$topic->id}", $this->memberToken());
+        $this->assertFalse($before->json('comments.0.edited'), 'a fresh comment is not edited');
+
+        /*
+         * Both timestamp columns are `datetime`, so the flag can only see a
+         * change once the clock has moved a whole second. Travelling is exact
+         * where sleeping would be flaky.
+         */
+        $this->travel(2)->seconds();
+
+        $this->patchJson("/api/member/forum/comments/{$comment->id}", ['body' => 'As corrected'],
+            $this->memberToken())->assertOk()->assertJsonPath('data.edited', true);
+
+        $after = $this->getJson("/api/member/forum/topics/{$topic->id}", $this->memberToken());
+        $this->assertTrue($after->json('comments.0.edited'));
+        $this->assertSame('As corrected', $after->json('comments.0.body'));
+
+        $this->travelBack();
+    }
+
     public function test_a_comment_a_member_deleted_themselves_leaves_no_trace_in_the_thread(): void
     {
         $topic = $this->topic();
@@ -599,7 +622,6 @@ class ForumTest extends TestCase
         $topic = $this->topic();
 
         $plain = new User();
-        $plain->account_id = 1;
         $plain->first_name = 'Plain';
         $plain->last_name = 'User';
         $plain->email = 'plain@example.com';

@@ -67,13 +67,21 @@ class ForumPresenter
 
             'created_at' => $comment->created_at?->toIso8601String(),
             /*
-             * Whether it has been changed since it was posted. Compared with a
-             * second of tolerance because created_at and updated_at are written
-             * in the same statement on insert and can land either side of a tick.
+             * Whether it has been changed since it was posted.
+             *
+             * A plain inequality, no tolerance. Laravel writes created_at and
+             * updated_at from the same instant on insert, so an untouched comment
+             * has them exactly equal -- an earlier version of this allowed a
+             * second of slack for a tick that cannot happen, and in doing so hid
+             * every edit made within a second of posting.
+             *
+             * Both columns are `datetime`, so second precision is the floor: an
+             * edit inside the same second as the post is genuinely indetectable
+             * here. That is a second of a person's own typing, so nobody notices.
              */
             'edited' => $comment->updated_at !== null
                 && $comment->created_at !== null
-                && $comment->updated_at->diffInSeconds($comment->created_at) > 1,
+                && ! $comment->updated_at->equalTo($comment->created_at),
 
             'moderated'    => $comment->isModerated(),
             'moderated_at' => $comment->moderated_at?->toIso8601String(),

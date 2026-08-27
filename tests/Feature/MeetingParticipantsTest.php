@@ -38,7 +38,6 @@ class MeetingParticipantsTest extends TestCase
         $this->otherOffice = Office::create(['name' => 'Port Louis']);
 
         $this->admin = new User();
-        $this->admin->account_id = 1;
         $this->admin->first_name = 'Test';
         $this->admin->last_name = 'User';
         $this->admin->email = 'admin@example.com';
@@ -146,7 +145,6 @@ class MeetingParticipantsTest extends TestCase
     public function test_a_user_without_the_admin_role_is_refused(): void
     {
         $plain = new User();
-        $plain->account_id = 1;
         $plain->first_name = 'Plain';
         $plain->last_name = 'User';
         $plain->email = 'plain@example.com';

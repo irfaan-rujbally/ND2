@@ -2,39 +2,49 @@
 
 namespace Database\Seeders;
 
-use App\Models\Account;
-use App\Models\Contact;
-use App\Models\Organization;
+use App\Models\Office;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Spatie\Permission\Models\Role;
 
+/**
+ * The minimum a fresh install needs to be usable: one office, and one
+ * administrator who can sign in and create everything else.
+ *
+ * This used to seed PingCRM's demo data -- an "Acme Corporation" account, a
+ * johndoe@example.com owner, and a hundred Faker contacts and organizations.
+ * None of those tables exist any more.
+ *
+ * Idempotent, so running it against a database that already has an office or an
+ * admin adds nothing and changes no password.
+ */
 class DatabaseSeeder extends Seeder
 {
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        $account = Account::create(['name' => 'Acme Corporation']);
+        $role = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
 
-        User::factory()->create([
-            'account_id' => $account->id,
-            'first_name' => 'John',
-            'last_name' => 'Doe',
-            'email' => 'johndoe@example.com',
-            'password' => 'secret',
-            'owner' => true,
-        ]);
+        $office = Office::firstOrCreate(['name' => 'Bonne Terre']);
 
-        User::factory(5)->create(['account_id' => $account->id]);
+        $admin = User::firstOrNew(['email' => 'admin@nd.com']);
 
-        $organizations = Organization::factory(100)
-            ->create(['account_id' => $account->id]);
+        if (! $admin->exists) {
+            $admin->first_name = 'ND';
+            $admin->last_name = 'Admin';
+            // Development only. Change it on any real deployment -- the staff
+            // sign-in is the whole register's front door.
+            $admin->password = 'password';
+        }
 
-        Contact::factory(100)
-            ->create(['account_id' => $account->id])
-            ->each(function ($contact) use ($organizations) {
-                $contact->update(['organization_id' => $organizations->random()->id]);
-            });
+        // Set on every run: an admin with no office sees an empty application,
+        // since every screen is scoped by office.
+        $admin->office_id = $office->id;
+        $admin->save();
+
+        if (! $admin->hasRole($role)) {
+            $admin->assignRole($role);
+        }
+
+        $this->command?->info("Seeded office '{$office->name}' and admin {$admin->email}.");
     }
 }

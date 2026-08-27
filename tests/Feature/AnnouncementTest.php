@@ -43,9 +43,6 @@ class AnnouncementTest extends TestCase
         $this->otherOffice = Office::create(['name' => 'Rodrigues']);
 
         $this->admin = new User();
-        // users.account_id is NOT NULL -- a leftover of the PingCRM schema this
-        // app grew out of, so it has to be filled even though nothing reads it.
-        $this->admin->account_id = 1;
         $this->admin->first_name = 'Ops';
         $this->admin->last_name = 'Admin';
         $this->admin->email = 'admin@example.com';

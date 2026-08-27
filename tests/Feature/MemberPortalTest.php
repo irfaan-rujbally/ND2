@@ -224,11 +224,8 @@ class MemberPortalTest extends TestCase
      */
     public function test_a_staff_token_cannot_reach_the_member_portal(): void
     {
-        // account_id is a not-null leftover from the PingCRM schema this app grew
-        // out of; the other suites set it by hand for the same reason.
         $user = User::factory()->create([
             'office_id'  => $this->office->id,
-            'account_id' => 1,
         ]);
         $token = $user->createToken('web')->plainTextToken;
 

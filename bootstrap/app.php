@@ -20,8 +20,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo('/login');
         $middleware->redirectUsersTo(AppServiceProvider::HOME);
 
-        // Inertia is gone: the frontend is a React SPA talking to routes/api.php,
-        // so the middleware that shared Inertia props no longer has a job.
+        // The frontend is a React SPA talking to routes/api.php. Inertia, and the
+        // middleware that shared its props, have been removed entirely.
 
         $middleware->throttleApi();
 

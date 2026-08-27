@@ -127,7 +127,6 @@ class MemberExportTest extends TestCase
     private function makeUser(string $email, Office $office): User
     {
         $user = new User();
-        $user->account_id = 1;
         $user->first_name = 'Test';
         $user->last_name = 'User';
         $user->email = $email;

@@ -21,7 +21,6 @@ class UserResource extends Resource
             // Writable so admins can set a password on create/update. Reads are
             // masked by the User model's $hidden, verified against the live API.
             'password',
-            'photo_path',
             'created_at',
             'updated_at',
             'deleted_at',

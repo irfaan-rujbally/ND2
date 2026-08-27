@@ -12,11 +12,6 @@ class Office extends Model
         return $this->hasMany(User::class);
     }
 
-    public function organizations(): HasMany
-    {
-        return $this->hasMany(Organization::class);
-    }
-
     public function members(): HasMany
     {
         return $this->hasMany(Member::class);

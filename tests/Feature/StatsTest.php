@@ -41,7 +41,6 @@ class StatsTest extends TestCase
         $this->office = Office::create(['name' => 'Bonne Terre']);
 
         $this->admin = new User();
-        $this->admin->account_id = 1;
         $this->admin->first_name = 'Test';
         $this->admin->last_name = 'User';
         $this->admin->email = 'admin@example.com';
