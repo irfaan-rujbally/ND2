@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bell, BellRing, CheckCheck } from 'lucide-react'
+import { Bell, BellRing, CheckCheck, Send } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -88,6 +88,19 @@ export function NotificationBell({ queryKey, notificationApi }) {
     }
   }
 
+  const testPush = async (event) => {
+    event.preventDefault()
+    setPushBusy(true)
+    try {
+      const result = await notificationApi.testPush()
+      toast.success(result.message)
+    } catch (error) {
+      toast.error(error.message || 'The test notification could not be delivered.')
+    } finally {
+      setPushBusy(false)
+    }
+  }
+
   return <DropdownMenu onOpenChange={(open) => open && query.refetch()}>
     <DropdownMenuTrigger asChild>
       <Button variant="ghost" size="icon" className="relative" aria-label={`${unread} unread notifications`}>
@@ -105,6 +118,9 @@ export function NotificationBell({ queryKey, notificationApi }) {
           <BellRing className="size-4" />
           {pushBusy ? 'Updating…' : pushEnabled ? 'Disable phone notifications' : 'Enable phone notifications'}
         </Button>
+        {pushEnabled ? <Button variant="ghost" size="sm" className="w-full justify-start" disabled={pushBusy} onClick={testPush}>
+          <Send className="size-4" />Send test notification
+        </Button> : null}
       </div> : null}
       <DropdownMenuSeparator className="m-0" />
       <div className="max-h-[min(28rem,70dvh)] overflow-y-auto">

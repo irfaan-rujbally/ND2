@@ -385,4 +385,5 @@ export const notifications = {
   pushKey: () => api.get('/push/key'),
   savePushSubscription: (subscription) => api.post('/push/subscriptions', subscription),
   deletePushSubscription: (endpoint) => api.delete('/push/subscriptions', { endpoint }),
+  testPush: () => api.post('/push/test'),
 }

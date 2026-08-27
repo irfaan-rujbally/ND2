@@ -11,16 +11,24 @@ use Throwable;
 
 class PushService
 {
-    public static function send(ActivityNotification $notification): void
+    public static function send(ActivityNotification $notification): array
     {
-        if (! config('webpush.vapid.public_key') || ! config('webpush.vapid.private_key')) return;
+        $result = ['subscriptions' => 0, 'sent' => 0, 'failed' => 0, 'reasons' => []];
+        if (! config('webpush.vapid.public_key') || ! config('webpush.vapid.private_key')) {
+            $result['reasons'][] = 'VAPID is not configured.';
+            return $result;
+        }
 
         $subscriptions = StoredSubscription::query()
             ->where('recipient_type', $notification->recipient_type)
             ->where('recipient_id', $notification->recipient_id)
             ->get();
 
-        if ($subscriptions->isEmpty()) return;
+        $result['subscriptions'] = $subscriptions->count();
+        if ($subscriptions->isEmpty()) {
+            $result['reasons'][] = 'No push subscription is registered for this account.';
+            return $result;
+        }
 
         try {
             $webPush = new WebPush(['VAPID' => [
@@ -43,13 +51,32 @@ class PushService
             }
 
             foreach ($webPush->flush() as $report) {
-                if (! $report->isSuccess() && $report->isSubscriptionExpired()) {
-                    StoredSubscription::where('endpoint_hash', hash('sha256', (string) $report->getRequest()->getUri()))->delete();
+                if ($report->isSuccess()) {
+                    $result['sent']++;
+                    continue;
+                }
+
+                $result['failed']++;
+                $reason = $report->getReason();
+                $result['reasons'][] = $reason;
+                $endpoint = (string) $report->getRequest()->getUri();
+                Log::warning('Web push provider rejected delivery', [
+                    'notification_id' => $notification->id,
+                    'endpoint_hash' => hash('sha256', $endpoint),
+                    'reason' => $reason,
+                ]);
+                if ($report->isSubscriptionExpired()) {
+                    StoredSubscription::where('endpoint_hash', hash('sha256', $endpoint))->delete();
                 }
             }
         } catch (Throwable $error) {
             // A push provider outage must never make the underlying app action fail.
             Log::warning('Web push delivery failed', ['notification_id' => $notification->id, 'error' => $error->getMessage()]);
+            $result['failed']++;
+            $result['reasons'][] = $error->getMessage();
         }
+
+
+        return $result;
     }
 }

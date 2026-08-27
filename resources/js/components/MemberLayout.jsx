@@ -76,6 +76,7 @@ export function MemberLayout() {
                 pushKey: memberApi.pushKey,
                 savePushSubscription: memberApi.savePushSubscription,
                 deletePushSubscription: memberApi.deletePushSubscription,
+                testPush: memberApi.testPush,
               }}
             />
 

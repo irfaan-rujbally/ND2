@@ -101,6 +101,7 @@ export const memberApi = {
   pushKey: () => request('GET', '/push/key'),
   savePushSubscription: (subscription) => request('POST', '/push/subscriptions', subscription),
   deletePushSubscription: (endpoint) => request('DELETE', '/push/subscriptions', { endpoint }),
+  testPush: () => request('POST', '/push/test'),
 
   /*
    * The forum. `mine` narrows the list to what this member wrote; everything
