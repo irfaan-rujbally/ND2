@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { deviceId } from '@/lib/device'
 import { cn } from '@/lib/utils'
 
 /** Travel, in pixels, before a gesture commits to an axis and stops being a scroll. */
@@ -161,9 +162,30 @@ export function NotificationBell({ queryKey, notificationApi }) {
     if (!pushSupported) return
     navigator.serviceWorker.ready
       .then((registration) => registration.pushManager.getSubscription())
-      .then((subscription) => setPushEnabled(Boolean(subscription)))
+      .then((subscription) => {
+        setPushEnabled(Boolean(subscription))
+        if (!subscription) return
+
+        /*
+         * Re-send what this browser already holds, on every load. The server
+         * keys on the device id, so this is an update rather than a new row,
+         * and it is what repairs the two states we cannot otherwise detect: an
+         * endpoint the browser rotated behind our back, and a row the server
+         * pruned after a provider reported it gone. It also keeps updated_at
+         * honest as a last-seen.
+         */
+        const json = subscription.toJSON()
+        return notificationApi.savePushSubscription({
+          endpoint: json.endpoint,
+          keys: json.keys,
+          content_encoding: PushManager.supportedContentEncodings?.[0] || 'aes128gcm',
+          device_id: deviceId(),
+        })
+      })
+      // Silent: this is housekeeping the member did not ask for and must never
+      // interrupt them. A failure just means the row is refreshed next load.
       .catch(() => {})
-  }, [pushSupported])
+  }, [pushSupported, notificationApi])
 
   const read = useMutation({
     mutationFn: notificationApi.read,
@@ -243,6 +265,7 @@ export function NotificationBell({ queryKey, notificationApi }) {
         endpoint: json.endpoint,
         keys: json.keys,
         content_encoding: PushManager.supportedContentEncodings?.[0] || 'aes128gcm',
+        device_id: deviceId(),
       })
       setPushEnabled(true)
       toast.success('Phone notifications enabled.')

@@ -4,6 +4,9 @@ services:
   php:
     #image: php:8.1-fpm
     build: './etc/infrastructure/php'
+    # Named explicitly so the scheduler below can share it rather than build and
+    # keep a second copy of the same image.
+    image: nd2-php
     container_name: crm_php
     volumes:
     - ./etc/.bashrc:/root/.bashrc
@@ -11,6 +14,32 @@ services:
     - ./etc/infrastructure/nginx/conf.d:/etc/nginx/conf.d/
     working_dir: /var/www/crm/
     links:
+    - db
+    - cache
+  # Runs Laravel's scheduler (see routes/console.php). `schedule:work` is the
+  # framework's own foreground loop -- it wakes every minute and runs whatever is
+  # due -- so this needs no crontab inside the image and its output goes to
+  # `docker compose logs scheduler` like any other service.
+  #
+  # Same image and same bind mount as php, so a `git pull` reaches it too and
+  # only the PHP container's rebuild has to be kept in step. It serves no
+  # traffic, which is why nginx does not link to it and no port is published.
+  scheduler:
+    build: './etc/infrastructure/php'
+    image: nd2-php
+    container_name: crm_scheduler
+    # The whole point is to be running at 03:00 on a Sunday without anyone
+    # watching, so it comes back from a reboot or a crash on its own.
+    restart: always
+    volumes:
+    - ./etc/.bashrc:/root/.bashrc
+    - .:/var/www/crm/
+    working_dir: /var/www/crm/
+    command: php artisan schedule:work
+    links:
+    - db
+    - cache
+    depends_on:
     - db
     - cache
   web:
