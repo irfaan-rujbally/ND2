@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -16,7 +17,7 @@ class Incident extends Model
     public const STATUSES = ['open', 'in_progress', 'resolved', 'closed'];
 
     protected $fillable = [
-        'office_id', 'member_id', 'created_by', 'title', 'description', 'status',
+        'office_id', 'member_id', 'created_by', 'department_id', 'title', 'description', 'status',
     ];
 
     protected static function booted(): void
@@ -62,8 +63,18 @@ class Incident extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class);
+    }
+
     public function comments(): HasMany
     {
         return $this->hasMany(IncidentComment::class)->oldest();
+    }
+
+    public function scopeUnassignedDepartment(Builder $query): Builder
+    {
+        return $query->whereNull('department_id');
     }
 }

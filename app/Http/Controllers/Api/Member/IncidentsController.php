@@ -13,6 +13,7 @@ class IncidentsController extends Controller
     public function index(Request $request): JsonResponse
     {
         $incidents = Incident::query()
+            ->with('department:id,name')
             ->where('member_id', $request->user()->id)
             ->latest()
             ->paginate(20);

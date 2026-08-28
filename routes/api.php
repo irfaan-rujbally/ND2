@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\Member\MeetingsController as MemberMeetingsControll
 use App\Http\Controllers\Api\Member\IncidentsController as MemberIncidentsController;
 use App\Http\Controllers\Api\Member\IncidentCommentsController as MemberIncidentCommentsController;
 use App\Http\Controllers\Api\IncidentCommentsController;
+use App\Http\Controllers\Api\DepartmentsController;
 use App\Http\Controllers\Api\NotificationsController;
 use App\Http\Controllers\Api\PushSubscriptionsController;
 use App\Http\Controllers\Api\Member\NewsController as MemberNewsController;
@@ -184,6 +185,7 @@ Route::middleware(['auth:sanctum', 'staff.only'])->group(function () {
     Route::post('auth/logout', [AuthController::class, 'logout'])->name('api.auth.logout');
 
     Route::get('stats', [StatsController::class, 'index'])->name('api.stats');
+    Route::get('departments', DepartmentsController::class)->name('api.departments.index');
 
     // Multipart uploads for the membership application's attachments; the REST
     // resources below only speak JSON.

@@ -14,7 +14,7 @@ class IncidentResource extends Resource
 
     public function fields(RestRequest $request): array
     {
-        return ['id', 'office_id', 'member_id', 'created_by', 'title', 'description', 'status', 'created_at', 'updated_at', 'deleted_at'];
+        return ['id', 'office_id', 'member_id', 'created_by', 'department_id', 'title', 'description', 'status', 'created_at', 'updated_at', 'deleted_at'];
     }
 
     public function relations(RestRequest $request): array
@@ -23,10 +23,11 @@ class IncidentResource extends Resource
             BelongsTo::make('office', OfficeResource::class),
             BelongsTo::make('member', MemberResource::class),
             BelongsTo::make('author', UserResource::class),
+            BelongsTo::make('department', DepartmentResource::class),
         ];
     }
 
-    public function scopes(RestRequest $request): array { return ['withTrashed', 'onlyTrashed']; }
+    public function scopes(RestRequest $request): array { return ['withTrashed', 'onlyTrashed', 'unassignedDepartment']; }
     public function limits(RestRequest $request): array { return [10, 25, 50, 100]; }
     public function defaultOrderBy(RestRequest $request): array { return ['created_at' => 'desc']; }
 
@@ -35,6 +36,7 @@ class IncidentResource extends Resource
         return [
             'office_id' => ['required', 'exists:offices,id'],
             'member_id' => ['nullable', Rule::exists('members', 'id')->where(fn ($query) => $query->where('office_id', $request->user()->office_id))],
+            'department_id' => ['required', 'integer', 'exists:departments,id'],
             'title' => ['required', 'string', 'max:150'],
             'description' => ['required', 'string', 'max:10000'],
             'status' => ['required', Rule::in(Incident::STATUSES)],

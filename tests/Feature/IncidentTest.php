@@ -3,9 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\Incident;
+use App\Models\Department;
 use App\Models\Member;
 use App\Models\Office;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class IncidentTest extends TestCase
@@ -19,13 +23,13 @@ class IncidentTest extends TestCase
         $other = Member::create(['first_name' => 'Bob', 'last_name' => 'Member', 'office_id' => $office->id]);
         Incident::create(['office_id' => $office->id, 'member_id' => $other->id, 'title' => 'Other', 'description' => 'Hidden', 'status' => 'open']);
         $token = $member->createToken('test', [Member::PORTAL_ABILITY])->plainTextToken;
-
         $this->withToken($token)->postJson('/api/member/incidents', [
             'title' => 'Street light',
             'description' => 'The light is not working.',
             'status' => 'closed',
             'member_id' => $other->id,
-        ])->assertCreated()->assertJsonPath('data.status', 'open')->assertJsonPath('data.member_id', $member->id);
+        ])->assertCreated()->assertJsonPath('data.status', 'open')->assertJsonPath('data.member_id', $member->id)
+            ->assertJsonPath('data.department_id', null);
 
         $this->withToken($token)->getJson('/api/member/incidents')
             ->assertOk()
@@ -43,5 +47,32 @@ class IncidentTest extends TestCase
 
         $this->withToken($token)->getJson("/api/member/incidents/{$otherIncident->id}/comments")
             ->assertNotFound();
+    }
+
+    public function test_staff_can_filter_incidents_that_have_no_department(): void
+    {
+        Role::create(['name' => 'admin', 'guard_name' => 'web']);
+        $office = Office::create(['name' => 'Central']);
+        $admin = new User();
+        $admin->first_name = 'Staff';
+        $admin->last_name = 'Admin';
+        $admin->email = 'staff@example.com';
+        $admin->password = 'secret';
+        $admin->office_id = $office->id;
+        $admin->save();
+        $admin->assignRole('admin');
+        Sanctum::actingAs($admin);
+
+        $department = Department::query()->firstOrFail();
+        Incident::create(['office_id' => $office->id, 'department_id' => $department->id, 'title' => 'Assigned', 'description' => 'Assigned incident', 'status' => 'open']);
+        Incident::create(['office_id' => $office->id, 'title' => 'Unassigned', 'description' => 'Unassigned incident', 'status' => 'open']);
+        $this->assertDatabaseHas('incidents', ['title' => 'Unassigned', 'department_id' => null]);
+
+        $this->postJson('/api/incidents/search', ['search' => [
+            'includes' => [['relation' => 'department']],
+            'scopes' => [[
+                'name' => 'unassignedDepartment', 'parameters' => [],
+            ]],
+        ]])->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.title', 'Unassigned');
     }
 }
