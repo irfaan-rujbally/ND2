@@ -43,6 +43,10 @@ import MemberForumTopicView from '@/pages/member/forum/ForumTopicView'
 import ForumTopicsList from '@/pages/forum/ForumTopicsList'
 import ForumTopicView from '@/pages/forum/ForumTopicView'
 import IncidentsList from '@/pages/incidents/IncidentsList'
+import PollsList from '@/pages/polls/PollsList'
+import PollForm from '@/pages/polls/PollForm'
+import PollView from '@/pages/polls/PollView'
+import MemberPolls from '@/pages/member/Polls'
 import MemberIncidents from '@/pages/member/Incidents'
 
 const queryClient = new QueryClient({
@@ -164,6 +168,7 @@ function App() {
         <Route path="forum" element={<MemberForumTopics />} />
         <Route path="forum/:id" element={<MemberForumTopicView />} />
         <Route path="incidents" element={<MemberIncidents />} />
+        <Route path="polls" element={<MemberPolls />} />
         <Route path="news" element={<News />} />
       </Route>
 
@@ -213,6 +218,13 @@ function App() {
         <Route path="forum">
           <Route index element={<RequireAdmin><ForumTopicsList /></RequireAdmin>} />
           <Route path=":id" element={<RequireAdmin><ForumTopicView /></RequireAdmin>} />
+        </Route>
+
+        <Route path="polls">
+          <Route index element={<RequireAdmin><PollsList /></RequireAdmin>} />
+          <Route path="create" element={<RequireAdmin><PollForm /></RequireAdmin>} />
+          <Route path=":id" element={<RequireAdmin><PollView /></RequireAdmin>} />
+          <Route path=":id/edit" element={<RequireAdmin><PollForm /></RequireAdmin>} />
         </Route>
 
         <Route path="users">

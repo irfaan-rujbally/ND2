@@ -23,7 +23,12 @@ use App\Http\Controllers\Api\DepartmentsController;
 use App\Http\Controllers\Api\NotificationsController;
 use App\Http\Controllers\Api\PushSubscriptionsController;
 use App\Http\Controllers\Api\Member\NewsController as MemberNewsController;
+use App\Http\Controllers\Api\Member\PollsController as MemberPollsController;
+use App\Http\Controllers\Api\Member\PollVotesController as MemberPollVotesController;
 use App\Http\Controllers\Api\Member\ProfileController as MemberProfileController;
+use App\Http\Controllers\Api\Polls\PollParticipationController;
+use App\Http\Controllers\Api\Polls\PollsController;
+use App\Http\Controllers\Api\Polls\PollStatusController;
 use App\Http\Controllers\Api\StatsController;
 use Illuminate\Support\Facades\Route;
 use Lomkit\Rest\Facades\Rest;
@@ -143,6 +148,17 @@ Route::prefix('member')->name('api.member.')->group(function () {
             // returns the notice alone, never the recipient list.
             Route::get('announcements', MemberAnnouncementsController::class)
                 ->name('announcements.index');
+
+            /*
+             * Polls. The member reads their office's questions and answers them;
+             * there is no route here that closes one or lists who else voted.
+             * Casting is throttled because it is a write reachable from a phone
+             * that a member may tap repeatedly on a slow connection.
+             */
+            Route::get('polls', MemberPollsController::class)->name('polls.index');
+            Route::post('polls/{poll}/vote', [MemberPollVotesController::class, 'store'])
+                ->middleware('throttle:30,1')
+                ->name('polls.vote');
 
             /*
              * The forum. A member reads their own office's topics, starts one,
@@ -275,6 +291,29 @@ Route::middleware(['auth:sanctum', 'staff.only'])->group(function () {
             ->name('comments.moderate');
         Route::delete('comments/{comment}/moderate', [StaffForumTopicsController::class, 'restoreComment'])
             ->name('comments.unmoderate');
+    });
+
+    /*
+     * Polls. Plain controllers rather than a Rest::resource, for the reason the
+     * forum is not one either: what these return is not the shape of the table.
+     * A poll comes back with its options, its tallies and its turnout, and
+     * writing one is a poll plus up to ten option rows in one transaction.
+     *
+     * `participation` is who has answered -- never what they answered. No route
+     * in this group returns that pairing, because no code in the application
+     * builds it. See App\Support\PollTally.
+     */
+    Route::prefix('polls')->name('api.polls.')->group(function () {
+        Route::get('/', [PollsController::class, 'index'])->name('index');
+        Route::post('/', [PollsController::class, 'store'])->name('store');
+        Route::get('{poll}', [PollsController::class, 'show'])->name('show');
+        Route::patch('{poll}', [PollsController::class, 'update'])->name('update');
+        Route::delete('{poll}', [PollsController::class, 'destroy'])->name('destroy');
+
+        Route::get('{poll}/participation', PollParticipationController::class)->name('participation');
+
+        Route::post('{poll}/close', [PollStatusController::class, 'close'])->name('close');
+        Route::delete('{poll}/close', [PollStatusController::class, 'reopen'])->name('reopen');
     });
 
     Rest::resource('offices', \App\Rest\Controllers\OfficesController::class);

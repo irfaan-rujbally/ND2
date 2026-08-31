@@ -10,6 +10,7 @@ import {
   MessagesSquare,
   UserCog,
   Users,
+  Vote,
 } from 'lucide-react'
 import { useAuth } from '@/auth/AuthProvider'
 import { Button } from '@/components/ui/button'
@@ -33,6 +34,7 @@ const navigation = [
   { to: '/members', label: 'Members', icon: Users },
   { to: '/announcements', label: 'Announcements', icon: Megaphone },
   { to: '/forum', label: 'Forum', icon: MessagesSquare },
+  { to: '/polls', label: 'Polls', icon: Vote },
   { to: '/incidents', label: 'Incidents', icon: AlertTriangle },
   { to: '/users', label: 'Users', icon: UserCog },
 ]

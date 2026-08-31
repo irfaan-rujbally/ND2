@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   CalendarCheck,
   AlertTriangle,
@@ -8,6 +8,7 @@ import {
   Newspaper,
   ScanLine,
   UserCircle,
+  Vote,
 } from 'lucide-react'
 
 import { useMemberAuth } from '@/auth/MemberAuthProvider'
@@ -42,12 +43,45 @@ const navigation = [
    */
   { to: '/my/announcements', label: 'Announcements', icon: Megaphone },
   { to: '/my/forum', label: 'Forum', icon: MessagesSquare },
+  /*
+   * Polls after the forum: both are the office and the members talking to
+   * each other, and a poll is the one that asks for an answer.
+   */
+  { to: '/my/polls', label: 'Polls', icon: Vote },
   { to: '/my/incidents', label: 'Incidents', icon: AlertTriangle },
   { to: '/my/news', label: 'News', icon: Newspaper },
 ]
 
+/** The path of the tab that shows the member their own record. */
+const OWN_RECORD = '/my'
+
+/**
+ * The tab the member is on.
+ *
+ * Longest match rather than first, because /my is a prefix of every other
+ * destination -- ordering by specificity is what keeps /my/forum/12 reading
+ * "Forum" instead of "My details".
+ */
+function activeTab(pathname) {
+  return navigation
+    .filter(({ to, end }) => (end ? pathname === to : pathname === to || pathname.startsWith(`${to}/`)))
+    .sort((a, b) => b.to.length - a.to.length)[0]
+}
+
 export function MemberLayout() {
   const { member, signOut } = useMemberAuth()
+  const tab = activeTab(useLocation().pathname)
+
+  /*
+   * Every tab is titled by its own name, except the one showing the member
+   * their own record: there the greeting IS the heading. "My details" would
+   * only repeat the tab underneath it, whereas the name confirms whose badge
+   * and whose QR code are on the screen -- which matters on a shared phone at a
+   * door.
+   */
+  const heading = tab?.to === OWN_RECORD && member
+    ? `Signed in as ${member.first_name} ${member.last_name}`
+    : tab?.label
 
   return (
     <div className="min-h-dvh bg-muted/30">
@@ -142,11 +176,12 @@ export function MemberLayout() {
       </nav>
 
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
-        {member && (
-          <p className="mb-4 text-sm text-muted-foreground">
-            Signed in as {member.first_name} {member.last_name}
-          </p>
-        )}
+        {/*
+          The name of the tab. It matters most on a phone: below `sm` the tabs
+          are icons alone with their labels sr-only, so without this the screen
+          has no words on it saying which one is open.
+        */}
+        {heading ? <h1 className="mb-4 text-xl font-semibold tracking-tight">{heading}</h1> : null}
         <Outlet />
       </main>
     </div>

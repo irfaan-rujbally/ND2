@@ -412,6 +412,31 @@ export const auth = {
   logout: () => api.post('/auth/logout'),
 }
 
+/*
+ * Polls, from the office's side.
+ *
+ * Not `search('polls', …)`: these are plain controllers rather than a Rest
+ * resource, because a poll comes back with its options, its tallies and its
+ * turnout — a shape no table has. See App\Http\Controllers\Api\Polls.
+ *
+ * There is no call here that returns how an individual member voted, because no
+ * endpoint offers one. `participation` is who answered, never what they chose.
+ */
+export const polls = {
+  list: ({ status = 'all', page = 1 } = {}) =>
+    api.get(`/polls?${new URLSearchParams({ status, page: String(page) })}`),
+
+  get: (id) => api.get(`/polls/${id}`),
+  create: (values) => api.post('/polls', values),
+  update: (id, values) => api.patch(`/polls/${id}`, values),
+  remove: (id) => api.delete(`/polls/${id}`),
+
+  close: (id) => api.post(`/polls/${id}/close`),
+  reopen: (id) => api.delete(`/polls/${id}/close`),
+
+  participation: (id) => api.get(`/polls/${id}/participation`),
+}
+
 export const stats = () => api.get('/stats')
 
 export const incidentComments = {

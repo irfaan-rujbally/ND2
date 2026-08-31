@@ -137,6 +137,16 @@ export const memberApi = {
   /** Announcements from the member's own office, newest first. Read-only. */
   announcements: () => request('GET', '/announcements'),
 
+  /*
+   * Polls from the member's own office. The tallies ride along in the same
+   * response, but only for a poll this member has already answered or one that
+   * has closed — the server decides that, not the screen.
+   */
+  polls: () => request('GET', '/polls'),
+
+  /** Casting, and recasting: sending again replaces the previous answer. */
+  votePoll: (pollId, optionIds) => request('POST', `/polls/${pollId}/vote`, { option_ids: optionIds }),
+
   incidents: () => request('GET', '/incidents'),
   createIncident: (values) => request('POST', '/incidents', values),
   incidentComments: (incidentId) => request('GET', `/incidents/${incidentId}/comments`),
