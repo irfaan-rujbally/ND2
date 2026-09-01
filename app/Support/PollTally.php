@@ -2,7 +2,6 @@
 
 namespace App\Support;
 
-use App\Models\Member;
 use App\Models\Poll;
 use App\Models\PollVote;
 use Illuminate\Support\Collection;
@@ -79,19 +78,19 @@ class PollTally
     }
 
     /**
-     * Members entitled to answer: the approved, non-deleted members of the
-     * poll's own office.
+     * Members entitled to answer -- the whole office, or just those invited.
      *
-     * Counted live rather than frozen when the poll was created, so the turnout
-     * figure always reads against today's register. That means a member approved
-     * mid-poll widens the denominator; the alternative -- a roll snapshot -- is a
-     * table nobody asked for, and this is a consultation rather than an election.
+     * Asks Poll::eligibleMembers() rather than rebuilding the rule: turnout has
+     * to be measured against exactly the people the vote endpoint would accept,
+     * or the office reads a percentage of the wrong denominator.
+     *
+     * Counted live rather than frozen when the poll was created, so it always
+     * reads against today's register. A member approved mid-poll therefore
+     * widens an office-wide denominator; the alternative -- a roll snapshot --
+     * is a table nobody asked for, and this is a consultation, not an election.
      */
     public static function eligibleCount(Poll $poll): int
     {
-        return Member::query()
-            ->where('office_id', $poll->office_id)
-            ->whereNotNull('approved_at')
-            ->count();
+        return $poll->eligibleMembers()->count();
     }
 }

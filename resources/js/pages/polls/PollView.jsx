@@ -101,6 +101,8 @@ export default function PollView() {
         <PollStatusBadge status={poll.status} />
         {poll.allows_multiple ? <span>several answers allowed</span> : <span>single answer</span>}
         <span>·</span>
+        <span>{poll.is_restricted ? 'invited members only' : 'open to the whole office'}</span>
+        <span>·</span>
         <span>{poll.author ? `asked by ${poll.author}, ` : ''}{formatDate(poll.created_at)}</span>
         {poll.closed_at ? <span>· closed {formatDate(poll.closed_at)}</span> : null}
         {poll.closes_at && !poll.closed_at ? <span>· deadline {formatDate(poll.closes_at)}</span> : null}
@@ -118,6 +120,7 @@ export default function PollView() {
             <h2 className="font-semibold">Who has answered</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               The ballot is confidential: this shows who took part, never what they chose.
+              {poll.is_restricted ? ' Only the members invited to this poll are listed.' : ''}
             </p>
           </div>
 

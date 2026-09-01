@@ -435,6 +435,14 @@ export const polls = {
   reopen: (id) => api.delete(`/polls/${id}/close`),
 
   participation: (id) => api.get(`/polls/${id}/participation`),
+
+  /*
+   * Every member the office could invite, flagged with whether this poll
+   * already has them. One unpaginated response so "Select all" can mean the
+   * whole register rather than the rows on screen.
+   */
+  candidates: (pollId) =>
+    api.get(`/polls/candidates${pollId ? `?poll=${encodeURIComponent(pollId)}` : ''}`),
 }
 
 export const stats = () => api.get('/stats')

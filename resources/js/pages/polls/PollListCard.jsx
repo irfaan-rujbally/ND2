@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom'
-import { BarChart3, Lock, LockOpen, Pencil, Trash2 } from 'lucide-react'
+import { BarChart3, Lock, LockOpen, Pencil, Trash2, Users } from 'lucide-react'
 
 import { PollResults, PollStatusBadge } from '@/components/poll-results'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { formatDate } from '@/lib/utils'
@@ -26,6 +27,17 @@ export function PollListCard({ poll, onToggleOpen, onDelete, busy }) {
               <PollStatusBadge status={poll.status} />
               {poll.allows_multiple ? (
                 <span className="text-xs text-muted-foreground">several answers allowed</span>
+              ) : null}
+              {/*
+                Worth saying on the card: a turnout of "8 of 12" reads very
+                differently once you know the poll went to twelve people rather
+                than the whole office.
+              */}
+              {poll.is_restricted ? (
+                <Badge variant="outline" className="gap-1">
+                  <Users className="size-3" />
+                  Invited members only
+                </Badge>
               ) : null}
             </div>
 

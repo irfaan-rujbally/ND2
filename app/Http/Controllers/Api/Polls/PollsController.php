@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Polls;
 use App\Http\Controllers\Controller;
 use App\Models\Poll;
 use App\Support\ActivityNotifier;
+use App\Support\PollElectorate;
 use App\Support\PollPresenter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -88,19 +89,24 @@ class PollsController extends Controller
             ]);
 
             self::writeOptions($poll, $data['options']);
+            PollElectorate::write($poll, $data);
 
             return $poll;
         });
 
         /*
          * Announced after the transaction, not from a `created` model event the
-         * way Announcement does it. A poll is not usable until its options
-         * exist, and on QUEUE_CONNECTION=sync a push fired from inside the
-         * transaction would reach members before a single option row was
-         * written -- they would tap through to an empty ballot.
+         * way Announcement does it. A poll is not usable until its options and
+         * its electorate exist, and on QUEUE_CONNECTION=sync a push fired from
+         * inside the transaction would reach members before a single option row
+         * was written -- they would tap through to an empty ballot.
+         *
+         * Addressed to the electorate rather than the office: telling five
+         * hundred members about a poll twenty of them may answer is five hundred
+         * notifications, most leading to a page that will not show it.
          */
-        ActivityNotifier::officeMembers(
-            $poll->office_id,
+        ActivityNotifier::members(
+            $poll->eligibleMembers()->pluck('members.id'),
             'new_poll',
             'New poll',
             $poll->title,
@@ -138,6 +144,24 @@ class PollsController extends Controller
             ], 422);
         }
 
+        /*
+         * The electorate may still be widened after voting starts -- "we forgot
+         * the Rodrigues branch" is a normal correction. Narrowing it is not:
+         * taking away somebody whose vote is already counted would leave a
+         * ballot in the tally cast by a person the poll now says was never
+         * entitled to answer. Refused, with the count so the office can see the
+         * size of what it nearly did.
+         */
+        if (array_key_exists('audience', $data)) {
+            $disenfranchised = PollElectorate::votersExcludedBy($poll, $data);
+
+            if ($disenfranchised > 0) {
+                return response()->json([
+                    'message' => "This would remove {$disenfranchised} member(s) who have already voted. Their answers would no longer belong to anyone entitled to give them.",
+                ], 422);
+            }
+        }
+
         DB::transaction(function () use ($data, $poll) {
             $poll->update([
                 'title'       => $data['title'],
@@ -148,6 +172,10 @@ class PollsController extends Controller
             if (array_key_exists('options', $data)) {
                 $poll->options()->delete();
                 self::writeOptions($poll, $data['options']);
+            }
+
+            if (array_key_exists('audience', $data)) {
+                PollElectorate::write($poll, $data);
             }
         });
 
@@ -178,6 +206,14 @@ class PollsController extends Controller
             'closes_at'       => ['nullable', 'date', 'after:now'],
             'options'         => ['required', 'array', 'min:'.Poll::MIN_OPTIONS, 'max:'.Poll::MAX_OPTIONS],
             'options.*'       => ['required', 'string', 'max:255'],
+            /*
+             * Who may answer. 'selected' without a list is refused rather than
+             * quietly meaning "everybody": a poll nobody was invited to is a
+             * mistake, and the safe way to fail is to say so.
+             */
+            'audience'        => ['nullable', 'in:'.Poll::AUDIENCE_OFFICE.','.Poll::AUDIENCE_SELECTED],
+            'member_ids'      => ['required_if:audience,'.Poll::AUDIENCE_SELECTED, 'array', 'min:1'],
+            'member_ids.*'    => ['integer'],
         ];
     }
 

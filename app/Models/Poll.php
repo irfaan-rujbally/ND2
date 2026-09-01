@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -23,6 +24,12 @@ class Poll extends Model
     public const MAX_OPTIONS = 10;
 
     public const MIN_OPTIONS = 2;
+
+    /** Every approved member of the poll's office. */
+    public const AUDIENCE_OFFICE = 'office';
+
+    /** Only the members listed in poll_member. */
+    public const AUDIENCE_SELECTED = 'selected';
 
     protected $table = 'polls';
 
@@ -68,6 +75,61 @@ class Poll extends Model
     public function votes(): HasMany
     {
         return $this->hasMany(PollVote::class);
+    }
+
+    /** The electorate of a restricted poll; empty on an office-wide one. */
+    public function invitedMembers(): BelongsToMany
+    {
+        return $this->belongsToMany(Member::class, 'poll_member')->withTimestamps();
+    }
+
+    public function isRestricted(): bool
+    {
+        return $this->audience === self::AUDIENCE_SELECTED;
+    }
+
+    /**
+     * Who may answer this poll: the one definition of the electorate.
+     *
+     * Everything that needs it asks here -- the turnout denominator, the "who
+     * has answered" list, what a member sees in the portal, and whether a vote
+     * is accepted. Four places deciding it separately is four places to disagree
+     * about who was entitled to take part in a party decision.
+     *
+     * Approved only, and never soft-deleted members: an applicant the office has
+     * not accepted cannot sign in to answer, so counting them would depress
+     * every turnout figure by people who could never have voted.
+     */
+    public function eligibleMembers(): Builder
+    {
+        return Member::query()
+            ->where('office_id', $this->office_id)
+            ->whereNotNull('approved_at')
+            ->when($this->isRestricted(), fn (Builder $query) => $query->whereIn(
+                'members.id',
+                fn ($sub) => $sub->select('member_id')->from('poll_member')->where('poll_id', $this->id)
+            ));
+    }
+
+    public function allows(Member $member): bool
+    {
+        return $this->eligibleMembers()->whereKey($member->id)->exists();
+    }
+
+    /**
+     * The polls this member may see at all.
+     *
+     * A restricted poll they were not invited to is not hidden from the list
+     * afterwards -- it never enters the query, so there is no filtering step to
+     * forget somewhere else.
+     */
+    public function scopeVisibleTo(Builder $query, Member $member): Builder
+    {
+        return $query
+            ->where('office_id', $member->office_id)
+            ->where(fn (Builder $inner) => $inner
+                ->where('audience', self::AUDIENCE_OFFICE)
+                ->orWhereHas('invitedMembers', fn (Builder $invited) => $invited->whereKey($member->id)));
     }
 
     /**

@@ -339,4 +339,151 @@ class PollTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.0.results.options.0.votes', 1);
     }
+
+    public function test_a_restricted_poll_is_only_visible_and_answerable_to_the_members_invited(): void
+    {
+        $invited = $this->member('Invited');
+        $excluded = $this->member('Excluded');
+        $this->member('Bystander');
+
+        $poll = $this->createPoll([
+            'title'      => 'Should the branch committee meet weekly?',
+            'audience'   => 'selected',
+            'member_ids' => [$invited->id],
+        ]);
+
+        $this->assertSame('selected', $poll['audience']);
+        $this->assertTrue($poll['is_restricted']);
+        // Turnout is measured against the electorate, not the register.
+        $this->assertSame(1, $poll['results']['eligible_count']);
+
+        $this->asMember($invited)->getJson('/api/member/polls')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $poll['id']);
+
+        $this->asMember($invited)
+            ->postJson("/api/member/polls/{$poll['id']}/vote", ['option_ids' => [$poll['options'][0]['id']]])
+            ->assertCreated();
+
+        // An uninvited member of the same office cannot see it and cannot answer
+        // it -- and is told 404, not 403, so the poll's existence stays private.
+        $this->asMember($excluded)->getJson('/api/member/polls')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+
+        $this->asMember($excluded)
+            ->postJson("/api/member/polls/{$poll['id']}/vote", ['option_ids' => [$poll['options'][0]['id']]])
+            ->assertNotFound();
+
+        $this->assertSame(1, PollVote::count());
+
+        // The office's own list shows only the electorate, so it chases the
+        // right people for the answers still missing.
+        $this->asAdmin()->getJson("/api/polls/{$poll['id']}/participation")
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'Invited Test')
+            ->assertJsonPath('meta.eligible', 1);
+    }
+
+    public function test_a_restricted_poll_refuses_an_empty_electorate(): void
+    {
+        $this->asAdmin()->postJson('/api/polls', [
+            'title'    => 'Nobody may answer this',
+            'options'  => ['Yes', 'No'],
+            'audience' => 'selected',
+        ])->assertStatus(422)->assertJsonValidationErrors('member_ids');
+    }
+
+    public function test_an_invitation_cannot_reach_another_office_or_an_unapproved_applicant(): void
+    {
+        $outsider = $this->member('Outsider', $this->otherOffice);
+        $ours = $this->member('Ours');
+
+        $applicant = $this->member('Applicant');
+        $applicant->forceFill(['approved_at' => null])->save();
+
+        $poll = $this->createPoll([
+            'audience'   => 'selected',
+            'member_ids' => [$ours->id, $outsider->id, $applicant->id],
+        ]);
+
+        // Only the approved member of this office survives the filter.
+        $this->assertSame(1, $poll['results']['eligible_count']);
+        $this->assertDatabaseHas('poll_member', ['poll_id' => $poll['id'], 'member_id' => $ours->id]);
+        $this->assertDatabaseMissing('poll_member', ['poll_id' => $poll['id'], 'member_id' => $outsider->id]);
+        $this->assertDatabaseMissing('poll_member', ['poll_id' => $poll['id'], 'member_id' => $applicant->id]);
+    }
+
+    public function test_the_electorate_may_be_widened_after_voting_but_never_narrowed_past_a_voter(): void
+    {
+        $first = $this->member('First');
+        $second = $this->member('Second');
+
+        $poll = $this->createPoll(['audience' => 'selected', 'member_ids' => [$first->id]]);
+
+        $this->asMember($first)
+            ->postJson("/api/member/polls/{$poll['id']}/vote", ['option_ids' => [$poll['options'][0]['id']]])
+            ->assertCreated();
+
+        // Widening: the forgotten branch is added, and the denominator grows.
+        $this->asAdmin()->patchJson("/api/polls/{$poll['id']}", [
+            'title'      => $poll['title'],
+            'audience'   => 'selected',
+            'member_ids' => [$first->id, $second->id],
+        ])->assertOk()->assertJsonPath('data.results.eligible_count', 2);
+
+        // Narrowing past somebody who has already answered is refused.
+        $this->patchJson("/api/polls/{$poll['id']}", [
+            'title'      => $poll['title'],
+            'audience'   => 'selected',
+            'member_ids' => [$second->id],
+        ])->assertStatus(422);
+
+        $this->assertDatabaseHas('poll_member', ['poll_id' => $poll['id'], 'member_id' => $first->id]);
+
+        // Opening it to the whole office strands nobody, so it is allowed.
+        $this->patchJson("/api/polls/{$poll['id']}", [
+            'title'    => $poll['title'],
+            'audience' => 'office',
+        ])->assertOk()->assertJsonPath('data.is_restricted', false);
+
+        $this->assertDatabaseCount('poll_member', 0);
+    }
+
+    public function test_the_candidate_picker_lists_the_office_and_marks_who_is_invited(): void
+    {
+        $invited = $this->member('Invited');
+        $this->member('Available');
+        $this->member('Outsider', $this->otherOffice);
+
+        $poll = $this->createPoll(['audience' => 'selected', 'member_ids' => [$invited->id]]);
+
+        $response = $this->asAdmin()->getJson("/api/polls/candidates?poll={$poll['id']}")->assertOk();
+
+        // Both members of this office are offered; the other office is not.
+        $response->assertJsonCount(2, 'data')->assertJsonPath('meta.total', 2);
+
+        $rows = collect($response->json('data'))->keyBy('name');
+        $this->assertTrue($rows['Invited Test']['invited']);
+        $this->assertFalse($rows['Available Test']['invited']);
+    }
+
+    public function test_a_staff_token_cannot_cast_a_vote(): void
+    {
+        $poll = $this->createPoll();
+
+        /*
+         * Staff are Users, not Members. A staff token is minted with '*', which
+         * satisfies the member ability, so the portal middleware is what stands
+         * between an administrator and the ballot -- and the office is not in
+         * the electorate to begin with.
+         */
+        $this->asAdmin()
+            ->postJson("/api/member/polls/{$poll['id']}/vote", ['option_ids' => [$poll['options'][0]['id']]])
+            ->assertForbidden();
+
+        $this->assertSame(0, PollVote::count());
+    }
 }

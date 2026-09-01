@@ -36,7 +36,9 @@ class PollsController extends Controller
             return response()->json(['data' => [], 'meta' => ['total' => 0, 'limit' => self::LIMIT]]);
         }
 
-        $query = Poll::query()->where('office_id', $member->office_id);
+        // Restricted polls this member was not invited to never enter the
+        // query, rather than being filtered out of the result afterwards.
+        $query = Poll::query()->visibleTo($member);
 
         $total = $query->count();
 

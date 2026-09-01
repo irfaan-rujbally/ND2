@@ -38,9 +38,10 @@ class PollParticipationController extends Controller
             ->groupBy('member_id')
             ->pluck('answered_at', 'member_id');
 
-        $members = Member::query()
-            ->where('office_id', $poll->office_id)
-            ->whereNotNull('approved_at')
+        // The electorate, which on a restricted poll is the invited list rather
+        // than the whole office -- Poll::eligibleMembers() decides, so this can
+        // never list somebody the vote endpoint would turn away.
+        $members = $poll->eligibleMembers()
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->get(['id', 'first_name', 'last_name']);

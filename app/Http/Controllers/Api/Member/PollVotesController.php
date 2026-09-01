@@ -33,11 +33,13 @@ class PollVotesController extends Controller
         $member = $request->user();
 
         /*
-         * 404, not 403. A poll belonging to another office is not a thing this
-         * member was refused -- it is a thing they cannot see, and saying
-         * "forbidden" would confirm that a poll with that id exists.
+         * 404, not 403, and the same answer for all three ways of being outside
+         * the electorate -- another office, not invited to a restricted poll, or
+         * not yet approved. None of those is a refusal the member should be told
+         * about: saying "forbidden" would confirm that a poll with that id
+         * exists and that somebody, somewhere, was asked this question.
          */
-        if ($member->office_id === null || $poll->office_id !== $member->office_id) {
+        if ($member->office_id === null || ! $poll->allows($member)) {
             throw new NotFoundHttpException();
         }
 

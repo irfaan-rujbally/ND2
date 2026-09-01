@@ -27,6 +27,13 @@ class PollPresenter
             'title'           => $poll->title,
             'description'     => $poll->description,
             'allows_multiple' => $poll->allows_multiple,
+            /*
+             * Who it was put to. The list of names is deliberately NOT here --
+             * the picker fetches it from polls/candidates, so a poll on a list
+             * of twenty never carries five hundred member ids it will not draw.
+             */
+            'audience'        => $poll->audience,
+            'is_restricted'   => $poll->isRestricted(),
             // Derived from the two timestamps, never stored -- see Poll::status().
             'status'          => $poll->status(),
             'is_open'         => $poll->isOpen(),

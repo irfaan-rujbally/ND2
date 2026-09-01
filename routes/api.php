@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\Member\NewsController as MemberNewsController;
 use App\Http\Controllers\Api\Member\PollsController as MemberPollsController;
 use App\Http\Controllers\Api\Member\PollVotesController as MemberPollVotesController;
 use App\Http\Controllers\Api\Member\ProfileController as MemberProfileController;
+use App\Http\Controllers\Api\Polls\PollCandidatesController;
 use App\Http\Controllers\Api\Polls\PollParticipationController;
 use App\Http\Controllers\Api\Polls\PollsController;
 use App\Http\Controllers\Api\Polls\PollStatusController;
@@ -306,6 +307,14 @@ Route::middleware(['auth:sanctum', 'staff.only'])->group(function () {
     Route::prefix('polls')->name('api.polls.')->group(function () {
         Route::get('/', [PollsController::class, 'index'])->name('index');
         Route::post('/', [PollsController::class, 'store'])->name('store');
+
+        /*
+         * The audience picker's data source. Registered before '{poll}' so the
+         * literal segment is not read as a poll key, exactly as members/export
+         * is registered before the members resource.
+         */
+        Route::get('candidates', PollCandidatesController::class)->name('candidates');
+
         Route::get('{poll}', [PollsController::class, 'show'])->name('show');
         Route::patch('{poll}', [PollsController::class, 'update'])->name('update');
         Route::delete('{poll}', [PollsController::class, 'destroy'])->name('destroy');
